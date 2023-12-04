@@ -1,6 +1,6 @@
 ﻿namespace Library.Entities;
 
-public class User : IUser
+public class User 
 {
     public Card Card { get; set; }
     public Person Person { get; set; }

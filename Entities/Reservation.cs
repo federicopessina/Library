@@ -1,6 +1,6 @@
 ﻿namespace Library.Entities;
 
-public class Reservation : IReservation
+public class Reservation
 {
     public string BookCode { get; set; }
     public Period Period { get; set; }

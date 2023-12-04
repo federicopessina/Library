@@ -26,8 +26,8 @@ public class ReservationStore : IReservationStore
 
     public async Task<Dictionary<int, List<Reservation>>> GetAllAsync()
     {
-        if (Store is null) throw new NullReferenceException("Cannot get delayed reservations in store because store is null.");
-        if (Store.Count == 0) throw new InvalidOperationException("Cannot get delayed reservations in store because store is empty.");
+        if (Store is null) throw new NullReferenceException("Cannot get reservations in store because store is null.");
+        if (Store.Count == 0) throw new InvalidOperationException("Cannot get reservations in store because store is empty.");
 
         return await Task.FromResult(Store);
     }

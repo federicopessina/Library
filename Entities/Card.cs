@@ -1,6 +1,6 @@
 ﻿namespace Library.Entities;
 
-public class Card //: ICard
+public class Card
 {
     public int Number { get; set; }
     public bool IsBlocked { get; set; } = false;
