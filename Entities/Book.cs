@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Library.Entities;
 
-public class Book
+public sealed class Book
 {
     #region Properties
     /// <summary>

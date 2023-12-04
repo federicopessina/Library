@@ -10,17 +10,17 @@ namespace Library.Core.API.Controllers;
 [ApiController]
 public class ReservationController : ControllerBase, IReservationController
 {
-    private IBookStore _bookStore;
-    private ICardStore _cardStore;
-    private IUserStore _userStore;
-    private IReservationStore _reservationStore;
+    private readonly IBookStore BookStore;
+    private readonly ICardStore CardStore;
+    private readonly IUserStore UserStore;
+    private readonly IReservationStore ReservationStore;
 
     public ReservationController(IBookStore bookStore, ICardStore cardStore, IUserStore userStore, IReservationStore reservationStore)
     {
-        this._bookStore = bookStore;
-        this._cardStore = cardStore;
-        this._userStore = userStore;
-        this._reservationStore = reservationStore;
+        this.BookStore = bookStore;
+        this.CardStore = cardStore;
+        this.UserStore = userStore;
+        this.ReservationStore = reservationStore;
     }
 
     [Tags("Get")]
@@ -32,7 +32,7 @@ public class ReservationController : ControllerBase, IReservationController
     {
         try
         {
-            var reservations = await _reservationStore.GetAllAsync();
+            var reservations = await ReservationStore.GetAllAsync();
             return reservations is null ? NotFound() : Ok(reservations);
         }
         catch (KeyNotFoundException)
@@ -59,7 +59,7 @@ public class ReservationController : ControllerBase, IReservationController
     {
         try
         {
-            var reservations = await _reservationStore.GetDelayedAsync(isBlocked);
+            var reservations = await ReservationStore.GetDelayedAsync(isBlocked);
             return reservations is null ? NotFound() : Ok(reservations);
         }
         catch (KeyNotFoundException)
@@ -91,7 +91,7 @@ public class ReservationController : ControllerBase, IReservationController
         try
         {
             // TODO Rename variables.
-            await _reservationStore.InsertAsync(tuple.Item1, tuple.Item2);
+            await ReservationStore.InsertAsync(tuple.Item1, tuple.Item2);
 
             return CreatedAtAction(nameof(Insert), new { cardNumber = tuple.Item1, reservation = tuple.Item2 });
         }
@@ -122,7 +122,7 @@ public class ReservationController : ControllerBase, IReservationController
         try
         {
             // TODO Change names.
-            await _reservationStore.UpdatePeriodAsync(tuple.Item1, tuple.Item2, tuple.Item3);
+            await ReservationStore.UpdatePeriodAsync(tuple.Item1, tuple.Item2, tuple.Item3);
 
             return CreatedAtAction(nameof(UpdatePeriod), new { cardNumber = tuple.Item1 }, tuple);
         }

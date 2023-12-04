@@ -2,7 +2,7 @@
 
 namespace Library.Entities;
 
-public class Person
+public sealed class Person
 {
     #region Properties
     /// <summary>

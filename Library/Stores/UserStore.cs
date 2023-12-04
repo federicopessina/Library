@@ -11,17 +11,15 @@ public class UserStore : IUserStore
     /// Key is <see cref="Card.Number"/>, value is <see cref="Person.IdCode"/>.
     /// </summary>
     public Dictionary<int, string> Store { get; set; }
-    //public IPersonStore _personStore { get; set; }
-    //public ICardStore _cardStore { get; set; }
-    private IPersonStore _personStore;
-    private ICardStore _cardStore;
+    private readonly ICardStore CardStore;
+    private readonly IPersonStore PersonStore;
     #endregion
 
     #region Constructors
     public UserStore(ICardStore cardStore, IPersonStore personStore)
     {
-        this._cardStore = cardStore;
-        this._personStore = personStore;
+        this.CardStore = cardStore;
+        this.PersonStore = personStore;
 
         if (Store is null)
             Store = new Dictionary<int, string>();
@@ -50,8 +48,8 @@ public class UserStore : IUserStore
             if (Store.ContainsKey(cardNumber)) throw new InvalidOperationException("Cannot insert user in store because store already contains user with same card number.");
 
             // Block insert if user is not in card store or in person store.
-            if (!_cardStore.Store.ContainsKey(cardNumber)) throw new KeyNotFoundException("Cannot insert user in store because card is not in card store.");
-            if (!_personStore.Store.ContainsKey(person)) throw new KeyNotFoundException("Cannot insert user in store because person is not in person store.");
+            if (!CardStore.Store.ContainsKey(cardNumber)) throw new KeyNotFoundException("Cannot insert user in store because card is not in card store.");
+            if (!PersonStore.Store.ContainsKey(person)) throw new KeyNotFoundException("Cannot insert user in store because person is not in person store.");
 
             // Block insert if person is already in user store.
             // NOTE Assuming one-to-one correspondence card-person.

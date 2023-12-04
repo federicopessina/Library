@@ -1,6 +1,6 @@
 ﻿namespace Library.Entities;
 
-public class User 
+public sealed class User 
 {
     public Card Card { get; set; }
     public Person Person { get; set; }

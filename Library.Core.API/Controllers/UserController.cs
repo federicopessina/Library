@@ -10,17 +10,15 @@ namespace Library.Core.API.Controllers;
 [ApiController]
 public class UserController : ControllerBase, IUserController
 {
-    public static UserStore UserStore { get; set; }
-    private ICardStore _cardStore;
-    private IPersonStore _personStore;
+    private readonly IUserStore UserStore;
+    private readonly ICardStore CardStore;
+    private readonly IPersonStore PersonStore;
 
-    public UserController(ICardStore cardStore, IPersonStore personStore)
+    public UserController(ICardStore cardStore, IPersonStore personStore, IUserStore userStore)
     {
-        this._cardStore = cardStore;
-        this._personStore = personStore;
-
-        if (UserStore is null)
-            UserStore = new UserStore(_cardStore, _personStore);
+        this.CardStore = cardStore;
+        this.PersonStore = personStore;
+        this.UserStore = userStore;
     }
 
     [Tags("Delete")]

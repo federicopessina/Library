@@ -9,11 +9,11 @@ namespace Library.Core.API.Controllers;
 [ApiController]
 public class PersonController : ControllerBase, IPersonController
 {
-    private IPersonStore _personStore;
+    private readonly IPersonStore PersonStore;
 
     public PersonController(IPersonStore personStore)
     {
-        _personStore = personStore;
+        PersonStore = personStore;
     }
 
     [Tags("Get")]
@@ -24,7 +24,7 @@ public class PersonController : ControllerBase, IPersonController
     {
         try
         {
-            var people = await _personStore.GetAsync();
+            var people = await PersonStore.GetAsync();
             return people is null ? NotFound() : Ok(people);
         }
         catch (InvalidOperationException)
@@ -48,7 +48,7 @@ public class PersonController : ControllerBase, IPersonController
     {
         try
         {
-            var people = await _personStore.GetAsync(idCode);
+            var people = await PersonStore.GetAsync(idCode);
             return people is null ? NotFound() : Ok(people);
         }
         catch (KeyNotFoundException)
@@ -76,7 +76,7 @@ public class PersonController : ControllerBase, IPersonController
     {
         try
         {
-            await _personStore.InsertAsync(person);
+            await PersonStore.InsertAsync(person);
 
             return CreatedAtAction(nameof(Insert), new { person.IdCode }, person);
         }
@@ -102,7 +102,7 @@ public class PersonController : ControllerBase, IPersonController
         try
         {
             // TODO Rename variables.
-            await _personStore.UpdateAddressAsync(tuple.Item1, tuple.Item2);
+            await PersonStore.UpdateAddressAsync(tuple.Item1, tuple.Item2);
 
             return CreatedAtAction(nameof(Update), new { idCode = tuple.Item1 }, new { addess = tuple.Item2 });
         }

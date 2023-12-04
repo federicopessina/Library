@@ -11,8 +11,6 @@ public class PersonStore : IPersonStore
     /// </summary>
     /// <remarks>Card number is primary key.</remarks>
     public Dictionary<string, Person> Store { get; set; }
-    //public static Dictionary<string, Person> Store { get; set; }
-
     #endregion
 
     #region Constructors

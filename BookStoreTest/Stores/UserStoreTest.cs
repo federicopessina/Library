@@ -2,7 +2,6 @@
 using Library.Entities;
 using Library.Interfaces;
 using Library.Interfaces.Stores;
-using Moq;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -12,9 +11,10 @@ namespace Library.Core.Test.Stores;
 
 public class UserStoreTest
 {
-    public UserStore UserStore { get; set; }
-    public ICardStore CardStore { get; set; }
-    public IPersonStore PersonStore { get; set; }
+    private ICardStore CardStore { get; set; }
+    private IPersonStore PersonStore { get; set; }
+    private IUserStore UserStore { get; set; }
+
     public UserStoreTest()
     {
         CardStore = new CardStore();

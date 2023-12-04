@@ -1,4 +1,5 @@
 ﻿using Library.Entities;
+using Library.Interfaces;
 using Moq;
 using System;
 using System.Collections.Generic;
@@ -10,7 +11,7 @@ namespace Library.Core.Test.Stores;
 public class PersonStoreTest
 {
     #region Properties
-    public PersonStore PersonStore { get; set; }
+    private IPersonStore PersonStore { get; set; }
     #endregion
 
     #region Constructors

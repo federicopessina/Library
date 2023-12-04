@@ -18,8 +18,7 @@ public class BookController : ControllerBase, IBookController
     /// Book store.
     /// </summary>
 
-    private readonly IBookStore _bookStore;
-    //private readonly BookDbContext _context;
+    private readonly IBookStore BookStore;
     #endregion
 
     #region Constructors
@@ -28,9 +27,8 @@ public class BookController : ControllerBase, IBookController
     /// </summary>
     public BookController(IBookStore bookStore)
     {
-        this._bookStore = bookStore;
+        this.BookStore = bookStore;
     }
-    //public BookController(BookDbContext context) => this._context = context;
     #endregion
 
     #region Helper Methods
@@ -42,7 +40,7 @@ public class BookController : ControllerBase, IBookController
     [HttpGet]
     public async Task<IEnumerable<Book>> Get()
     {
-        return await Task.FromResult(_bookStore.Store.Values);
+        return await Task.FromResult(BookStore.Store.Values);
     }
     #endregion
 
@@ -61,7 +59,7 @@ public class BookController : ControllerBase, IBookController
     {
         try
         {
-            var books = await _bookStore.GetAllAsync();
+            var books = await BookStore.GetAllAsync();
             return books is null ? NotFound() : Ok(books);
         }
         catch (Exception)
@@ -84,7 +82,7 @@ public class BookController : ControllerBase, IBookController
     {
         try
         {
-            var books = await _bookStore.GetByCodeAsync(code);
+            var books = await BookStore.GetByCodeAsync(code);
             return books is null ? NotFound() : Ok(books);
         }
         catch (KeyNotFoundException)
@@ -115,7 +113,7 @@ public class BookController : ControllerBase, IBookController
     {
         try
         {
-            var books = await _bookStore.GetByTitleAsync(title);
+            var books = await BookStore.GetByTitleAsync(title);
             return books is null || books.Count == 0 ? NotFound() : Ok(books);
         }
         catch (Exception)
@@ -138,7 +136,7 @@ public class BookController : ControllerBase, IBookController
     {
         try
         {
-            var book = await _bookStore.GetByPositionAsync(position);
+            var book = await BookStore.GetByPositionAsync(position);
             return book is null || book.Count == 0 ? NotFound() : Ok(book);
         }
         catch (Exception)
@@ -161,7 +159,7 @@ public class BookController : ControllerBase, IBookController
     {
         try
         {
-            var books = await _bookStore.GetByAuthorAsync(author);
+            var books = await BookStore.GetByAuthorAsync(author);
             return books is null || books.Count == 0 ? NotFound() : Ok(books);
         }
         catch (NullReferenceException)
@@ -189,7 +187,7 @@ public class BookController : ControllerBase, IBookController
     {
         try
         {
-            var books = await _bookStore.GetByGenreAsync(genre);
+            var books = await BookStore.GetByGenreAsync(genre);
             return books == null || books.Count == 0 ? NotFound() : Ok(books);
         }
         catch (NullReferenceException)
@@ -217,7 +215,7 @@ public class BookController : ControllerBase, IBookController
     {
         try
         {
-            var books = await _bookStore.GetByDefinitionAsync(book);
+            var books = await BookStore.GetByDefinitionAsync(book);
             return books == null || books.Count == 0 ? NotFound() : Ok(books);
         }
         catch (NullReferenceException)
@@ -244,7 +242,7 @@ public class BookController : ControllerBase, IBookController
     {
         try
         {
-            await _bookStore.InsertAsync(book);
+            await BookStore.InsertAsync(book);
 
             return CreatedAtAction(nameof(Insert), new { serialNumber = book.Code }, book);
         }
@@ -272,7 +270,7 @@ public class BookController : ControllerBase, IBookController
     {
         try
         {
-            await _bookStore.DeleteAllAsync();
+            await BookStore.DeleteAllAsync();
             return NoContent();
         }
         catch (NullReferenceException)
@@ -300,7 +298,7 @@ public class BookController : ControllerBase, IBookController
     {
         try
         {
-            await _bookStore.DeleteByCodeAsync(code);
+            await BookStore.DeleteByCodeAsync(code);
             return NoContent();
         }
         catch (InvalidOperationException)
@@ -331,7 +329,7 @@ public class BookController : ControllerBase, IBookController
     {
         try
         {
-            await _bookStore.UpdateAsync(book);
+            await BookStore.UpdateAsync(book);
 
             return CreatedAtAction(nameof(Update), new { serialNumber = book.Code }, book);
         }

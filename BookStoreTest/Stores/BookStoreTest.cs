@@ -1,19 +1,18 @@
-using Library;
 using Library.Core.Stores;
 using Library.Entities;
 using Library.Enums;
+using Library.Interfaces;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Xunit;
 
-namespace BookStoreTest;
+namespace Library.Core.Test.Stores;
 
 public class BookStoreTest
 {
     #region Properties
-    public BookStore BookStore { get; set; }
+    public IBookStore BookStore { get; set; }
     #endregion
 
     #region Constructors

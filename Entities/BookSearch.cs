@@ -2,7 +2,7 @@
 
 namespace Library.Entities;
 
-public class BookSearch
+public sealed class BookSearch
 {
     #region Properties
     /// <summary>

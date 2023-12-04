@@ -13,24 +13,21 @@ namespace Library.Core.Test.Stores;
 public class CardStoreTest
 {
     #region Properties
-    public CardStore CardStore { get; set; }
-
-    public ICardStore _cardStore { get; set; } // TODO Check CardStore & ICardStore
-    public IBookStore _bookStore { get; set; }
-    public IPersonStore _personStore { get; set; }
-    public IUserStore _userStore { get; set; } // TODO Change dep ? check DI ctor.
-    public IReservationStore _reservationStore { get; set; }
+    public IBookStore BookStore { get; set; }
+    public ICardStore CardStore { get; set; } 
+    public IPersonStore PersonStore { get; set; }
+    public IUserStore UserStore { get; set; } 
+    public IReservationStore ReservationStore { get; set; }
     #endregion
 
     #region Constructors
     public CardStoreTest()
     {
-        _bookStore = new BookStore();
-        _personStore = new PersonStore();
-        _cardStore = new CardStore();
-        _userStore = new UserStore(_cardStore, _personStore);
-        _reservationStore = new ReservationStore(_bookStore, _cardStore, _userStore);
+        BookStore = new BookStore();
+        PersonStore = new PersonStore();
         CardStore = new CardStore();
+        UserStore = new UserStore(CardStore, PersonStore);
+        ReservationStore = new ReservationStore(BookStore, CardStore, UserStore);
     }
     #endregion
 
@@ -41,14 +38,14 @@ public class CardStoreTest
         CardStore.Store = null;
 
         // Act & Assert
-        await Assert.ThrowsAsync<NullReferenceException>(async () => await CardStore.DeleteAsync(new Card(0), _reservationStore, _userStore));
+        await Assert.ThrowsAsync<NullReferenceException>(async () => await CardStore.DeleteAsync(new Card(0), ReservationStore, UserStore));
     }
 
     [Fact]
     public async Task DeleteAsync_IfStoreIsEmpty_ThrowsException_Async()
     {
         // Arrange & Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(async () => await CardStore.DeleteAsync(new Card(0), _reservationStore, _userStore));
+        await Assert.ThrowsAsync<InvalidOperationException>(async () => await CardStore.DeleteAsync(new Card(0), ReservationStore, UserStore));
     }
 
     [Fact]
@@ -62,7 +59,7 @@ public class CardStoreTest
         await Assert.ThrowsAsync<KeyNotFoundException>(async () =>
         {
             const int NumberNotInStore = 0;
-            await CardStore.DeleteAsync(new Card(NumberNotInStore), _reservationStore, _userStore);
+            await CardStore.DeleteAsync(new Card(NumberNotInStore), ReservationStore, UserStore);
         });
     }
 
@@ -73,16 +70,15 @@ public class CardStoreTest
         var card = new Card(1);
         var book = new Book("1", 1);
 
-        await _bookStore.InsertAsync(book);
+        await BookStore.InsertAsync(book);
         await CardStore.InsertAsync(card);
         var reservation = new Reservation(book.Code, new Period());
 
-        await _cardStore.InsertAsync(card);
-        await _reservationStore.InsertAsync(card.Number, reservation);
+        await ReservationStore.InsertAsync(card.Number, reservation);
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(async ()
-            => { await CardStore.DeleteAsync(card, _reservationStore, _userStore); });
+            => { await CardStore.DeleteAsync(card, ReservationStore, UserStore); });
     }
 
     [Fact]
@@ -92,15 +88,15 @@ public class CardStoreTest
         var card = new Card(1);
         var person = new Person("1");
 
-        await _cardStore.InsertAsync(card);
-        await _personStore.InsertAsync(person);
+        await CardStore.InsertAsync(card);
+        await PersonStore.InsertAsync(person);
         var reservation = new Reservation("1", new Period());
 
-        await _userStore.InsertAsync(card.Number, person.IdCode);
+        await UserStore.InsertAsync(card.Number, person.IdCode);
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(async ()
-            => { await _cardStore.DeleteAsync(card, _reservationStore, _userStore); });
+            => { await CardStore.DeleteAsync(card, ReservationStore, UserStore); });
     }
 
     [Fact]
@@ -116,7 +112,7 @@ public class CardStoreTest
         int numOfItemsInStoreBefore = CardStore.Store.Count;
 
         // Act
-        await CardStore.DeleteAsync(card, _reservationStore, _userStore);
+        await CardStore.DeleteAsync(card, ReservationStore, UserStore);
 
         // Assert
         int numOfItemsInStoreAfter = CardStore.Store.Count;

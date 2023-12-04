@@ -13,21 +13,21 @@ namespace Library.Core.Test.Stores;
 public class ReservationStoreTest
 {
     #region Properties
-    public ReservationStore ReservationStore { get; set; }
-    public IBookStore _bookStore { get; set; }
-    public ICardStore _cardStore { get; set; }
-    public IPersonStore _personStore { get; set; } // TODO Check I
-    public IUserStore _userStore { get; set; } // TODO Check I // TODO Check case w/ _ or not ?
+    public IBookStore BookStore { get; set; }
+    public ICardStore CardStore { get; set; }
+    public IPersonStore PersonStore { get; set; } 
+    public IUserStore UserStore { get; set; } 
+    public IReservationStore ReservationStore { get; set; }
     #endregion
 
     #region Constructors
     public ReservationStoreTest()
     {
-        _bookStore = new BookStore();
-        _cardStore = new CardStore();
-        _personStore = new PersonStore();
-        _userStore = new UserStore(_cardStore, _personStore);
-        ReservationStore = new ReservationStore(_bookStore, _cardStore, _userStore);
+        BookStore = new BookStore();
+        CardStore = new CardStore();
+        PersonStore = new PersonStore();
+        UserStore = new UserStore(CardStore, PersonStore);
+        ReservationStore = new ReservationStore(BookStore, CardStore, UserStore);
     }
 
     #endregion
@@ -74,14 +74,14 @@ public class ReservationStoreTest
         {
             // Insert card in card store.
             var card = new Card(i, false);
-            await _cardStore.InsertAsync(card);
+            await CardStore.InsertAsync(card);
 
             // Insert not delayed reservations.
             for (int j = 0; j < numOfNotDelayedReservations; j++)
             {
                 // Insert book in book store.
                 var notDelayedBook = new Book(bookVar.ToString(), bookVar);
-                await _bookStore.InsertAsync(notDelayedBook);
+                await BookStore.InsertAsync(notDelayedBook);
 
                 var dateFrom = DateTime.Today.Date;
                 await ReservationStore.InsertAsync(card.Number,
@@ -93,7 +93,7 @@ public class ReservationStoreTest
 
             // Insert book in book store.
             var delayedBook = new Book(bookVar.ToString(), bookVar);
-            await _bookStore.InsertAsync(delayedBook);
+            await BookStore.InsertAsync(delayedBook);
 
             // Insert delayed reservation.
             await ReservationStore.InsertAsync(card.Number,
@@ -104,7 +104,7 @@ public class ReservationStoreTest
         }
 
         // Act
-        var delayedReservations = await ReservationStore.GetDelayedAsync();
+        var delayedReservations = await ReservationStore.GetDelayedAsync(null);
 
         // Assert
         Assert.Equal(numOfDelayedPerson, delayedReservations.Count);
@@ -124,14 +124,14 @@ public class ReservationStoreTest
         {
             // Insert card in card store.
             var card = new Card(i, false);
-            await _cardStore.InsertAsync(card);
+            await CardStore.InsertAsync(card);
 
             // Insert not delayed reservations.
             for (int j = 0; j < numOfNotDelayedReservations; j++)
             {
                 // Insert book in book store.
                 var notDelayedBook = new Book(bookVar.ToString(), bookVar);
-                await _bookStore.InsertAsync(notDelayedBook);
+                await BookStore.InsertAsync(notDelayedBook);
 
                 var dateFrom = DateTime.Today.Date;
                 await ReservationStore.InsertAsync(card.Number,
@@ -143,7 +143,7 @@ public class ReservationStoreTest
 
             // Insert book in book store.
             var delayedBook = new Book(bookVar.ToString(), bookVar);
-            await _bookStore.InsertAsync(delayedBook);
+            await BookStore.InsertAsync(delayedBook);
 
             // Insert delayed reservation.
             await ReservationStore.InsertAsync(card.Number,
@@ -154,7 +154,7 @@ public class ReservationStoreTest
 
             // Block card.
             card = new Card(card.Number, true);
-            await _cardStore.UpdateIsBlockedAsync(card.Number);
+            await CardStore.UpdateIsBlockedAsync(card.Number);
         }
 
         // Act
@@ -172,8 +172,8 @@ public class ReservationStoreTest
         var card = new Card(0, false);
         var reservation = new Reservation(book.Code, new Mock<Period>().Object);
 
-        await _bookStore.InsertAsync(book);
-        await _cardStore.InsertAsync(card);
+        await BookStore.InsertAsync(book);
+        await CardStore.InsertAsync(card);
 
         // Act
         await ReservationStore.InsertAsync(card.Number, reservation);
@@ -192,8 +192,8 @@ public class ReservationStoreTest
 
         var card = new Card(0, false);
 
-        await _bookStore.InsertAsync(book);
-        await _cardStore.InsertAsync(card);
+        await BookStore.InsertAsync(book);
+        await CardStore.InsertAsync(card);
 
         // Act
         await Assert.ThrowsAsync<InvalidOperationException>(async ()
@@ -208,8 +208,8 @@ public class ReservationStoreTest
         var reservation = new Reservation(book.Code, new Mock<Period>().Object);
         var card = new Card(0, false);
 
-        await _bookStore.InsertAsync(book);
-        await _cardStore.InsertAsync(card);
+        await BookStore.InsertAsync(book);
+        await CardStore.InsertAsync(card);
         await ReservationStore.InsertAsync(card.Number, reservation);
 
         // Act
@@ -228,10 +228,10 @@ public class ReservationStoreTest
         var reservation2 = new Reservation(book2.Code, new Mock<Period>().Object);
         var card = new Card(0, false);
 
-        await _bookStore.InsertAsync(book1);
-        await _bookStore.InsertAsync(book2);
+        await BookStore.InsertAsync(book1);
+        await BookStore.InsertAsync(book2);
 
-        await _cardStore.InsertAsync(card);
+        await CardStore.InsertAsync(card);
 
         // Act
         await ReservationStore.InsertAsync(card.Number, reservation1);
@@ -254,12 +254,12 @@ public class ReservationStoreTest
     {
         // Arrange
         var card = new Card(0, false);
-        await _cardStore.InsertAsync(card);
+        await CardStore.InsertAsync(card);
 
         for (int i = 0; i < numberOfElements; i++)
         {
             var book = new Book(i.ToString(), i);
-            await _bookStore.InsertAsync(book);
+            await BookStore.InsertAsync(book);
         }
 
         // Act
@@ -285,12 +285,12 @@ public class ReservationStoreTest
         var book5 = new Book("5", 5);
         var book6 = new Book("6", 6);
 
-        await _bookStore.InsertAsync(book1);
-        await _bookStore.InsertAsync(book2);
-        await _bookStore.InsertAsync(book3);
-        await _bookStore.InsertAsync(book4);
-        await _bookStore.InsertAsync(book5);
-        await _bookStore.InsertAsync(book6);
+        await BookStore.InsertAsync(book1);
+        await BookStore.InsertAsync(book2);
+        await BookStore.InsertAsync(book3);
+        await BookStore.InsertAsync(book4);
+        await BookStore.InsertAsync(book5);
+        await BookStore.InsertAsync(book6);
 
         var reservation1 = new Reservation(book1.Code, new Mock<Period>().Object);
         var reservation2 = new Reservation(book2.Code, new Mock<Period>().Object);
@@ -300,7 +300,7 @@ public class ReservationStoreTest
         var reservation6 = new Reservation(book6.Code, new Mock<Period>().Object);
 
         var card = new Card(0, false);
-        await _cardStore.InsertAsync(card);
+        await CardStore.InsertAsync(card);
 
         // Act
         await ReservationStore.InsertAsync(card.Number, reservation1);
@@ -340,7 +340,7 @@ public class ReservationStoreTest
         var card = new Card(0, true);
         var reservationMock = new Mock<Reservation>().Object;
 
-        await _cardStore.InsertAsync(card);
+        await CardStore.InsertAsync(card);
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(async ()
@@ -358,8 +358,8 @@ public class ReservationStoreTest
         var dateTo = DateTime.Now.Date.AddDays(-1);
         var reservation = new Reservation(book.Code, new Period(dateFrom: dateFrom, dateTo: dateTo));
 
-        await _bookStore.InsertAsync(book);
-        await _cardStore.InsertAsync(card);
+        await BookStore.InsertAsync(book);
+        await CardStore.InsertAsync(card);
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(async ()
@@ -378,9 +378,9 @@ public class ReservationStoreTest
         var dateTo = DateTime.Now.Date.AddDays(-1);
         var reservation = new Reservation(book1.Code, new Period(dateFrom: dateFrom, dateTo: dateTo));
 
-        await _bookStore.InsertAsync(book1);
-        await _bookStore.InsertAsync(book2);
-        await _cardStore.InsertAsync(card);
+        await BookStore.InsertAsync(book1);
+        await BookStore.InsertAsync(book2);
+        await CardStore.InsertAsync(card);
         await ReservationStore.InsertAsync(card.Number, reservation);
 
         // Act & Assert
@@ -445,14 +445,14 @@ public class ReservationStoreTest
         var cardInStore = new Card(0);
         var person = new Person("000", "Name", "Surname", new Address());
 
-        await _bookStore.InsertAsync(book);
-        await _cardStore.InsertAsync(cardInStore);
-        await _personStore.InsertAsync(person);
+        await BookStore.InsertAsync(book);
+        await CardStore.InsertAsync(cardInStore);
+        await PersonStore.InsertAsync(person);
 
         await ReservationStore.InsertAsync(
             cardInStore.Number, 
             new Reservation(book.Code, new Mock<Period>().Object));
-        await _userStore.InsertAsync(cardInStore.Number, person.IdCode);
+        await UserStore.InsertAsync(cardInStore.Number, person.IdCode);
 
         // Act & Assert
         var cardNotInStoreMock = new Card(1);
@@ -470,10 +470,10 @@ public class ReservationStoreTest
         var person = new Person("000", "Name", "Surname", new Address());
         var reservation = new Reservation(book.Code, new Mock<Period>().Object);
 
-        await _bookStore.InsertAsync(book);
-        await _cardStore.InsertAsync(card);
-        await _personStore.InsertAsync(person);
-        await _userStore.InsertAsync(card.Number, person.IdCode);
+        await BookStore.InsertAsync(book);
+        await CardStore.InsertAsync(card);
+        await PersonStore.InsertAsync(person);
+        await UserStore.InsertAsync(card.Number, person.IdCode);
         
         await ReservationStore.InsertAsync(card.Number, reservation);
         await ReservationStore.UpdatePeriodAsync(card.Number, reservation, dateTo: DateTime.Today.AddDays(-1));
@@ -535,8 +535,8 @@ public class ReservationStoreTest
         var card2 = new Card(1, false);
         var reservation = new Reservation(book.Code, new Mock<Period>().Object);
 
-        await _bookStore.InsertAsync(book);
-        await _cardStore.InsertAsync(card1);
+        await BookStore.InsertAsync(book);
+        await CardStore.InsertAsync(card1);
 
         await ReservationStore.InsertAsync(card1.Number, reservation);
 
@@ -556,9 +556,9 @@ public class ReservationStoreTest
         var reservation = new Reservation(book1.Code, new Mock<Period>().Object);
         var reservationNotInReservationList = new Reservation(book2.Code, new Mock<Period>().Object);
 
-        await _bookStore.InsertAsync(book1);
-        await _bookStore.InsertAsync(book2);
-        await _cardStore.InsertAsync(card);
+        await BookStore.InsertAsync(book1);
+        await BookStore.InsertAsync(book2);
+        await CardStore.InsertAsync(card);
         await ReservationStore.InsertAsync(card.Number, reservation);
 
         // Act & Assert
@@ -574,8 +574,8 @@ public class ReservationStoreTest
         var card = new Card(0, false);
         var reservation = new Reservation(book.Code, new Mock<Period>().Object);
 
-        await _bookStore.InsertAsync(book);
-        await _cardStore.InsertAsync(card);
+        await BookStore.InsertAsync(book);
+        await CardStore.InsertAsync(card);
         await ReservationStore.InsertAsync(card.Number, reservation);
 
         // Act
@@ -595,10 +595,10 @@ public class ReservationStoreTest
         var book3 = new Book("3", 3);
         var card = new Card(0, false);
 
-        await _bookStore.InsertAsync(book1);
-        await _bookStore.InsertAsync(book2);
+        await BookStore.InsertAsync(book1);
+        await BookStore.InsertAsync(book2);
 
-        await _cardStore.InsertAsync(card);
+        await CardStore.InsertAsync(card);
 
         var reservationDelayed = new Reservation(book2.Code, new Period(dateFrom: DateTime.Today.Date.AddDays(-10)));
         var reservationNotDelayed = new Reservation(book1.Code, new Period(dateFrom: DateTime.Today.Date));

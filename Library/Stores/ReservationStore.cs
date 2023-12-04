@@ -10,15 +10,16 @@ public class ReservationStore : IReservationStore
     /// Key is card number, value is the reservation.
     /// </summary>
     public Dictionary<int, List<Reservation>> Store { get; set; }
-    public IBookStore _bookStore;
-    public ICardStore _cardStore;
-    public IUserStore _userStore;
+    public readonly IBookStore BookStore;
+    public readonly ICardStore CardStore;
+    public readonly IUserStore UserStore;
     
     public ReservationStore(IBookStore bookStore, ICardStore cardStore, IUserStore userStore)
     {
-        this._bookStore = bookStore;
-        this._cardStore = cardStore;
-        this._userStore = userStore;
+        this.BookStore = bookStore;
+        this.CardStore = cardStore;
+        this.UserStore = userStore;
+
         if (Store is null)
             Store = new Dictionary<int, List<Reservation>>();
 
@@ -40,7 +41,7 @@ public class ReservationStore : IReservationStore
         var result = new List<Reservation>();
         foreach (var item in Store)
         {
-            var card = await _cardStore.GetAsync(item.Key);
+            var card = await CardStore.GetAsync(item.Key);
             if (isBlocked is null || card.IsBlocked == isBlocked)
             {
                 foreach (var reservation in item.Value)
@@ -65,7 +66,7 @@ public class ReservationStore : IReservationStore
             if (Store is null) throw new NullReferenceException("Cannot insert reservation in store because store is null.");
 
             // Block reservation if card is blocked.
-            var isBlocked = _cardStore.GetAsync(cardNumber).Result.IsBlocked;
+            var isBlocked = CardStore.GetAsync(cardNumber).Result.IsBlocked;
             if (isBlocked) throw new InvalidOperationException("Cannot insert reservation in store because user is blocked.");
 
             // Add user if store does not contain it.
@@ -78,10 +79,10 @@ public class ReservationStore : IReservationStore
             if (reservedOrPickedReservations.Count() >= maxNoOfReservations) throw new InvalidOperationException( "Cannot insert reservation in store because user has already max number of reservation.");
 
             // Block reseration if book is not in book store // TODO Test
-            if (!_bookStore.Store.ContainsKey(reservation.BookCode)) throw new KeyNotFoundException("Cannot insert reservation in store because the book is not in book store");
+            if (!BookStore.Store.ContainsKey(reservation.BookCode)) throw new KeyNotFoundException("Cannot insert reservation in store because the book is not in book store");
 
             // Block reservation if book has no position. // TODO Test
-            if (_bookStore.Store[reservation.BookCode].Position is null) throw new InvalidOperationException("Cannot insert reservation in store because the book is not reservable (is without position in store");
+            if (BookStore.Store[reservation.BookCode].Position is null) throw new InvalidOperationException("Cannot insert reservation in store because the book is not reservable (is without position in store");
 
             // Block reservation if dateTo is previous to dateFrom.
             if (reservation.Period.DateFrom >= reservation.Period.DateTo) throw new InvalidOperationException("Cannot insert reservation in store because period has negative time span");
@@ -115,7 +116,7 @@ public class ReservationStore : IReservationStore
             if (Store.Count == 0) throw new InvalidOperationException("Cannot update reservation in store because store is empty.");
 
             // Block update reservation if user store does not contain card.
-            if (!_userStore.Store.ContainsKey(cardNumber)) throw new KeyNotFoundException("Cannot update reservation in store because user is not in user store.");
+            if (!UserStore.Store.ContainsKey(cardNumber)) throw new KeyNotFoundException("Cannot update reservation in store because user is not in user store.");
 
             // Block update reservation if user is blocked.
             //if (card.IsBlocked is true) throw new InvalidOperationException("Cannot update reservation in store because user is blocked.");
