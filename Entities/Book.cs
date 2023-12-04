@@ -16,7 +16,7 @@ public class Book
     /// Position in the book store of the book.
     /// </summary>
     /// <remarks>Only one book can be assigned to a position.</remarks>
-    public int? Position { get; set; } = null; //TODO get out ?
+    public int? Position { get; set; } = null; // TODO get out ?
     /// <summary>
     /// Authors of the book.
     /// </summary>

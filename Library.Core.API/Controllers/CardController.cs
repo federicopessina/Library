@@ -10,17 +10,16 @@ namespace Library.Core.API.Controllers;
 [ApiController]
 public class CardController : ControllerBase, ICardController
 {
-    public static CardStore CardStore { get; set; }
-    private readonly IReservationStore _reservationStore;
-    private readonly IUserStore _userStore;
+    //public static CardStore CardStore { get; set; }
+    private ICardStore _cardStore;
+    private IReservationStore _reservationStore;
+    private IUserStore _userStore;
 
-    public CardController(IReservationStore reservationStore, IUserStore userStore)
+    public CardController(ICardStore cardStore, IReservationStore reservationStore, IUserStore userStore)
     {
+        this._cardStore = cardStore;
         this._reservationStore = reservationStore;
         this._userStore = userStore;
-
-        if (CardStore is null)
-            CardStore = new CardStore();
     }
 
     [Tags("Delete")]
@@ -29,7 +28,7 @@ public class CardController : ControllerBase, ICardController
     {
         try
         {
-            await CardStore.DeleteAsync(card, _reservationStore, _userStore);
+            await _cardStore.DeleteAsync(card, _reservationStore, _userStore);
             return NoContent();
         }
         catch (InvalidOperationException)
@@ -48,6 +47,23 @@ public class CardController : ControllerBase, ICardController
     }
 
     [Tags("Get")]
+    [HttpGet("Get")]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Get()
+    {
+        try
+        {
+            var cards = await _cardStore.GetAsync();
+            return cards is null ? NotFound() : Ok(cards);
+        }
+        catch (Exception)
+        {
+
+            return BadRequest();
+        }
+    }
+
+    [Tags("Get")]
     [HttpGet("Get/{cardNumber}")]
     [ProducesResponseType(typeof(Card), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -56,7 +72,7 @@ public class CardController : ControllerBase, ICardController
     {
         try
         {
-            var card = await CardStore.GetAsync(cardNumber);
+            var card = await _cardStore.GetAsync(cardNumber);
             return card is null ? NotFound() : Ok(card);
         }
         catch (KeyNotFoundException)
@@ -83,7 +99,7 @@ public class CardController : ControllerBase, ICardController
     {
         try
         {
-            var card = await CardStore.GetIsBlockedAsync(isBlocked);
+            var card = await _cardStore.GetIsBlockedAsync(isBlocked);
             return card is null ? NotFound() : Ok(card);
         }
         catch (KeyNotFoundException)
@@ -110,7 +126,7 @@ public class CardController : ControllerBase, ICardController
     {
         try
         {
-            await CardStore.InsertAsync(card);
+            await _cardStore.InsertAsync(card);
 
             return CreatedAtAction(nameof(Insert), new { number = card.Number }, card);
         }
@@ -135,7 +151,7 @@ public class CardController : ControllerBase, ICardController
     {
         try
         {
-            await CardStore.UpdateIsBlockedAsync(cardNumber, isBlocked ?? true); // TODO Check ?? operator.
+            await _cardStore.UpdateIsBlockedAsync(cardNumber, isBlocked ?? true); // TODO Check ?? operator.
 
             return CreatedAtAction(nameof(UpdateIsBlocked), new { cardNumber }, isBlocked);
         }

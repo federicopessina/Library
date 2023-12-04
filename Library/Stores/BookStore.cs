@@ -58,7 +58,7 @@ public class BookStore : IBookStore
     {
         await Task.Run(() =>
         {
-            //Check if store is null or empty.
+            // Check if store is null or empty.
             if (Store is null) throw new NullReferenceException($"Store is null.");
             if (Store.Count.Equals(0)) throw new InvalidOperationException($"Store is empty.");
 
@@ -74,7 +74,7 @@ public class BookStore : IBookStore
     /// <returns></returns>
     public async Task<Dictionary<string, Book>> GetAllAsync()
     {
-        //Check if store is null or empty.
+        // Check if store is null or empty.
         if (Store is null) throw new NullReferenceException($"Cannot get books in store because store is null.");
         if (Store.Count.Equals(0)) throw new InvalidOperationException($"Cannot get books in store because store is empty.");
 
@@ -88,7 +88,7 @@ public class BookStore : IBookStore
     /// <returns></returns>
     public async Task<Book> GetByCodeAsync(string serialNumber)
     {
-        //Check if store is null or empty.
+        // Check if store is null or empty.
         if (Store is null) throw new NullReferenceException($"Cannot get book by code in store because store is null.");
         if (Store.Count.Equals(0)) throw new InvalidOperationException($"Cannot get book by code in store because store is empty.");
 
@@ -104,13 +104,13 @@ public class BookStore : IBookStore
     /// <returns></returns>
     public async Task<Dictionary<string, Book>> GetByTitleAsync(string? title)
     {
-        //Check if store is null or empty.
+        // Check if store is null or empty.
         if (Store is null) throw new NullReferenceException($"Cannot get books by title in store because store is null.");
         if (Store.Count.Equals(0)) throw new InvalidOperationException($"Cannot get books by title in store because store is empty.");
 
         var result = new Dictionary<string, Book>();
 
-        //Case title is null.
+        // Case title is null.
         if (title is null)
         {
             foreach (var book in Store)
@@ -121,7 +121,7 @@ public class BookStore : IBookStore
             return await Task.FromResult(result);
         }
 
-        //Case title is not null.
+        // Case title is not null.
         foreach (var book in Store)
         {
             if (book.Value.Title is not null && book.Value.Title.ToLower().Contains(title.ToLower()))
@@ -139,13 +139,13 @@ public class BookStore : IBookStore
     /// <remarks>With null position should be the only case where you can retrieve multiple books by position.</remarks>
     public async Task<Dictionary<string, Book>> GetByPositionAsync(int? position)
     {
-        //Check if store is null or empty.
+        // Check if store is null or empty.
         if (Store is null) throw new NullReferenceException($"Cannot get book by position in store because store is null.");
         if (Store.Count.Equals(0)) throw new InvalidOperationException($"Cannot get book by position in store because store is empty.");
 
         var result = new Dictionary<string, Book>();
-
-        //Case position is null.
+         
+        // Case position is null.
         if (position is null)
         {
             foreach (var book in Store)
@@ -157,7 +157,7 @@ public class BookStore : IBookStore
             return await Task.FromResult(result);
         }
 
-        //Case position is not null.
+        // Case position is not null.
         foreach (var book in Store)
         {
             if (book.Value.Position == position)
@@ -174,13 +174,13 @@ public class BookStore : IBookStore
     /// <exception cref="InvalidOperationException"></exception>
     public async Task<Dictionary<string, Book>> GetByGenreAsync(EGenre? eGenre) 
     {
-        //Check if store is null or empty.
+        // Check if store is null or empty.
         if (Store is null) throw new NullReferenceException($"Cannot get books by genre in store because store is null.");
         if (Store.Count.Equals(0)) throw new InvalidOperationException($"Cannot get books by genre in store because store is empty.");
 
         var result = new Dictionary<string, Book>();
 
-        //Case eGenre is null.
+        // Case eGenre is null.
         if (eGenre is null)
         {
             foreach (var book in Store)
@@ -194,7 +194,7 @@ public class BookStore : IBookStore
             return await Task.FromResult(result);
         }
 
-        //Case eGenre is not null.
+        // Case eGenre is not null.
         foreach (var book in Store)
         {
             if (book.Value.Genres is null) continue;
@@ -386,10 +386,9 @@ public class BookStore : IBookStore
                 if (Store.Any(item => item.Value.Position == book.Position))
                     throw new InvalidOperationException($"Book inserted is in position {book.Position} already occupied."); 
 
-            //Add element if code is not already present.
-            //MEMO code is primary key.
-            if (!Store.TryAdd(book.Code, book))
-                throw new InvalidOperationException($"Impossible to add book with code {book.Code}.");
+            // Add element if code is not already present.
+            // MEMO code is primary key.
+            if (!Store.TryAdd(book.Code, book)) throw new InvalidOperationException($"Impossible to add book with code {book.Code}.");
         });
     }
     /// <summary>

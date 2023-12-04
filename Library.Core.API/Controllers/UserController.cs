@@ -11,8 +11,8 @@ namespace Library.Core.API.Controllers;
 public class UserController : ControllerBase, IUserController
 {
     public static UserStore UserStore { get; set; }
-    private readonly ICardStore _cardStore;
-    private readonly IPersonStore _personStore;
+    private ICardStore _cardStore;
+    private IPersonStore _personStore;
 
     public UserController(ICardStore cardStore, IPersonStore personStore)
     {
@@ -60,7 +60,7 @@ public class UserController : ControllerBase, IUserController
         {
             await UserStore.InsertAsync(cardNumber, personIdCode);
 
-            return CreatedAtAction(nameof(Insert), new { cardNumber }, personIdCode); // TODO Check.
+            return CreatedAtAction(nameof(Insert), new { cardNumber = cardNumber, personIdCode = personIdCode });
         }
         catch (InvalidOperationException)
         {

@@ -13,8 +13,8 @@ public class UserStore : IUserStore
     public Dictionary<int, string> Store { get; set; }
     //public IPersonStore _personStore { get; set; }
     //public ICardStore _cardStore { get; set; }
-    private readonly IPersonStore _personStore;
-    private readonly ICardStore _cardStore;
+    private IPersonStore _personStore;
+    private ICardStore _cardStore;
     #endregion
 
     #region Constructors

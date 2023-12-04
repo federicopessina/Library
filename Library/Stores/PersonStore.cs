@@ -24,6 +24,14 @@ public class PersonStore : IPersonStore
     #endregion
 
     #region IUserStore Methods
+    public Task<Dictionary<string, Person>> GetAsync()
+    {
+        if (Store is null) throw new NullReferenceException("Cannot get person from store because store is null");
+        if (Store.Count == 0) throw new InvalidOperationException("Cannot get person from store because store is empty.");
+
+        return Task.FromResult(Store);
+    }
+
     public Task<Person> GetAsync(string idCode)
     {
         if (Store is null) throw new NullReferenceException("Cannot get person from store because store is null");

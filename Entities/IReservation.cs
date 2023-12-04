@@ -2,7 +2,7 @@
 {
     public interface IReservation
     {
-        Book Book { get; }
+        string BookCode { get; }
         Period Period { get; }
         Status Status { get; set; }
     }

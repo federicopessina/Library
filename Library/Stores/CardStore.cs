@@ -39,6 +39,11 @@ public class CardStore : ICardStore
         });
     }
 
+    public async Task<Dictionary<int, Card>> GetAsync()
+    {
+        return await Task.FromResult(Store);
+    }
+
     public async Task<Card> GetAsync(int cardNumber)
     {
         if (Store is null) throw new NullReferenceException("Cannot get cards in card store because card store is null");
@@ -88,4 +93,5 @@ public class CardStore : ICardStore
             Store[cardNumber].IsBlocked = isBlocked;
         });
     }
+
 }

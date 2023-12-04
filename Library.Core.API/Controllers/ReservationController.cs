@@ -1,5 +1,5 @@
-﻿using Library.Core.Stores;
-using Library.Entities;
+﻿using Library.Entities;
+using Library.Interfaces;
 using Library.Interfaces.Controllers;
 using Library.Interfaces.Stores;
 using Microsoft.AspNetCore.Mvc;
@@ -10,29 +10,29 @@ namespace Library.Core.API.Controllers;
 [ApiController]
 public class ReservationController : ControllerBase, IReservationController
 {
-    public static ReservationStore ReservationStore { get; set; }
-    private readonly ICardStore _cardStore;
-    private readonly IUserStore _userStore;
+    private IBookStore _bookStore;
+    private ICardStore _cardStore;
+    private IUserStore _userStore;
+    private IReservationStore _reservationStore;
 
-    public ReservationController(ICardStore cardStore, IUserStore userStore)
+    public ReservationController(IBookStore bookStore, ICardStore cardStore, IUserStore userStore, IReservationStore reservationStore)
     {
+        this._bookStore = bookStore;
         this._cardStore = cardStore;
         this._userStore = userStore;
-
-        if (ReservationStore is null)
-            ReservationStore = new ReservationStore(_cardStore, _userStore);
+        this._reservationStore = reservationStore;
     }
 
     [Tags("Get")]
-    [HttpGet("GetDelayed")]
+    [HttpGet("GetAll")]
     [ProducesResponseType(typeof(Dictionary<int, Book>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetDelayed(bool? isBlocked = null)
+    public async Task<IActionResult> GetAll()
     {
         try
         {
-            var reservations = await ReservationStore.GetDelayedAsync(isBlocked);
+            var reservations = await _reservationStore.GetAllAsync();
             return reservations is null ? NotFound() : Ok(reservations);
         }
         catch (KeyNotFoundException)
@@ -50,6 +50,38 @@ public class ReservationController : ControllerBase, IReservationController
         }
     }
 
+    [Tags("Get")]
+    [HttpGet("GetDelayed")]
+    [ProducesResponseType(typeof(Dictionary<int, Book>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetDelayed(bool? isBlocked = null)
+    {
+        try
+        {
+            var reservations = await _reservationStore.GetDelayedAsync(isBlocked);
+            return reservations is null ? NotFound() : Ok(reservations);
+        }
+        catch (KeyNotFoundException)
+        {
+
+            return NotFound();
+        }
+        catch (NullReferenceException)
+        {
+            return BadRequest();
+        }
+        catch (InvalidOperationException)
+        {
+            return BadRequest();
+        }
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="tuple"></param>
+    /// <returns></returns>
     [Tags("Insert")]
     [HttpPut("Insert")]
     [ProducesResponseType(StatusCodes.Status201Created)]
@@ -59,9 +91,9 @@ public class ReservationController : ControllerBase, IReservationController
         try
         {
             // TODO Rename variables.
-            await ReservationStore.InsertAsync(tuple.Item1, tuple.Item2);
+            await _reservationStore.InsertAsync(tuple.Item1, tuple.Item2);
 
-            return CreatedAtAction(nameof(Insert), new { tuple.Item1 }, tuple.Item2);
+            return CreatedAtAction(nameof(Insert), new { cardNumber = tuple.Item1, reservation = tuple.Item2 });
         }
         catch (InvalidOperationException)
         {
@@ -90,7 +122,7 @@ public class ReservationController : ControllerBase, IReservationController
         try
         {
             // TODO Change names.
-            await ReservationStore.UpdatePeriodAsync(tuple.Item1, tuple.Item2, tuple.Item3);
+            await _reservationStore.UpdatePeriodAsync(tuple.Item1, tuple.Item2, tuple.Item3);
 
             return CreatedAtAction(nameof(UpdatePeriod), new { cardNumber = tuple.Item1 }, tuple);
         }

@@ -2,17 +2,17 @@
 
 public class Reservation : IReservation
 {
-    public Book Book { get; }
-    public Period Period { get; }
+    public string BookCode { get; set; }
+    public Period Period { get; set; }
     public Status Status { get; set; } = Status.Reserved;
     public Reservation()
     {
 
     }
-    public Reservation(Period period, Book book)
+    public Reservation(string bookCode, Period period)
     {
+        BookCode = bookCode;
         Period = period;
-        Book = book;
     }
 }
 

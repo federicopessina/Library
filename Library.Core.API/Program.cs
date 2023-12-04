@@ -22,6 +22,8 @@ builder.Services.AddSingleton<ICardStore, CardStore>();
 builder.Services.AddSingleton<IUserStore, UserStore>();
 builder.Services.AddSingleton<IReservationStore, ReservationStore>();
 
+// TODO Add controller ? 
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

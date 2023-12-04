@@ -16,6 +16,7 @@ public class CardStoreTest
     public CardStore CardStore { get; set; }
 
     public ICardStore _cardStore { get; set; } // TODO Check CardStore & ICardStore
+    public IBookStore _bookStore { get; set; }
     public IPersonStore _personStore { get; set; }
     public IUserStore _userStore { get; set; } // TODO Change dep ? check DI ctor.
     public IReservationStore _reservationStore { get; set; }
@@ -24,10 +25,11 @@ public class CardStoreTest
     #region Constructors
     public CardStoreTest()
     {
+        _bookStore = new BookStore();
         _personStore = new PersonStore();
         _cardStore = new CardStore();
         _userStore = new UserStore(_cardStore, _personStore);
-        _reservationStore = new ReservationStore(_cardStore, _userStore);
+        _reservationStore = new ReservationStore(_bookStore, _cardStore, _userStore);
         CardStore = new CardStore();
     }
     #endregion
@@ -69,9 +71,11 @@ public class CardStoreTest
     {
         // Arrange
         var card = new Card(1);
+        var book = new Book("1", 1);
 
+        await _bookStore.InsertAsync(book);
         await CardStore.InsertAsync(card);
-        var reservation = new Reservation(new Period(), new Book("1", 1));
+        var reservation = new Reservation(book.Code, new Period());
 
         await _cardStore.InsertAsync(card);
         await _reservationStore.InsertAsync(card.Number, reservation);
@@ -90,7 +94,7 @@ public class CardStoreTest
 
         await _cardStore.InsertAsync(card);
         await _personStore.InsertAsync(person);
-        var reservation = new Reservation(new Period(), new Book("1", 1));
+        var reservation = new Reservation("1", new Period());
 
         await _userStore.InsertAsync(card.Number, person.IdCode);
 

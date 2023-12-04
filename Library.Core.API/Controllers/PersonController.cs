@@ -1,4 +1,5 @@
 ﻿using Library.Entities;
+using Library.Interfaces;
 using Library.Interfaces.Controllers;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,12 +9,34 @@ namespace Library.Core.API.Controllers;
 [ApiController]
 public class PersonController : ControllerBase, IPersonController
 {
-    public static PersonStore PersonStore { get; set; }
+    private IPersonStore _personStore;
 
-    static PersonController()
+    public PersonController(IPersonStore personStore)
     {
-        if (PersonStore is null)
-            PersonStore = new PersonStore();
+        _personStore = personStore;
+    }
+
+    [Tags("Get")]
+    [HttpGet("GetAll")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetAll()
+    {
+        try
+        {
+            var people = await _personStore.GetAsync();
+            return people is null ? NotFound() : Ok(people);
+        }
+        catch (InvalidOperationException)
+        {
+
+            return BadRequest();
+        }
+        catch (NullReferenceException)
+        {
+
+            return BadRequest();
+        }
     }
 
     [Tags("Get")]
@@ -25,7 +48,7 @@ public class PersonController : ControllerBase, IPersonController
     {
         try
         {
-            var people = await PersonStore.GetAsync(idCode);
+            var people = await _personStore.GetAsync(idCode);
             return people is null ? NotFound() : Ok(people);
         }
         catch (KeyNotFoundException)
@@ -53,7 +76,7 @@ public class PersonController : ControllerBase, IPersonController
     {
         try
         {
-            await PersonStore.InsertAsync(person);
+            await _personStore.InsertAsync(person);
 
             return CreatedAtAction(nameof(Insert), new { person.IdCode }, person);
         }
@@ -79,7 +102,7 @@ public class PersonController : ControllerBase, IPersonController
         try
         {
             // TODO Rename variables.
-            await PersonStore.UpdateAddressAsync(tuple.Item1, tuple.Item2);
+            await _personStore.UpdateAddressAsync(tuple.Item1, tuple.Item2);
 
             return CreatedAtAction(nameof(Update), new { idCode = tuple.Item1 }, new { addess = tuple.Item2 });
         }
@@ -99,4 +122,5 @@ public class PersonController : ControllerBase, IPersonController
             return BadRequest();
         }
     }
+
 }
