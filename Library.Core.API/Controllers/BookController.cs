@@ -1,7 +1,8 @@
-﻿using Library.Core.Stores;
+﻿using Library.Core.Exceptions.BookStore;
+using Library.Core.Exceptions.Results;
 using Library.Entities;
-using Library.Enums;
 using Library.Interfaces;
+using Library.Interfaces.Stores;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Library.Core.API.Controllers;
@@ -13,34 +14,18 @@ namespace Library.Core.API.Controllers;
 [ApiController] // Apply common convetion like automatic validation, request binding etc.
 public class BookController : ControllerBase, IBookController
 {
-    #region Public Properties
-    /// <summary>
-    /// Book store.
-    /// </summary>
-
+    private const string BookTag = "Book";
+    private readonly IPublicationStore PublicationStore;
     private readonly IBookStore BookStore;
-    #endregion
 
     #region Constructors
     /// <summary>
     /// Constructor to access the cached store.
     /// </summary>
-    public BookController(IBookStore bookStore)
+    public BookController(IPublicationStore publicationStore, IBookStore bookStore)
     {
+        this.PublicationStore = publicationStore;
         this.BookStore = bookStore;
-    }
-    #endregion
-
-    #region Helper Methods
-    /// <summary>
-    /// Get method to ping connection.
-    /// </summary>
-    /// <returns></returns>
-    [Tags("Get")]
-    [HttpGet]
-    public async Task<IEnumerable<Book>> Get()
-    {
-        return await Task.FromResult(BookStore.Store.Values);
     }
     #endregion
 
@@ -50,9 +35,9 @@ public class BookController : ControllerBase, IBookController
     /// </summary>
     /// <returns>If store is empty returns an empty IEnumerable. Keep this way to ensure connection is working properly.</returns>
     /// <remarks>It's called every time is called an http request.</remarks>
-    [Tags("Get")]
-    [HttpGet("GetAll")]
-    [ProducesResponseType(typeof(Dictionary<int, Book>), StatusCodes.Status200OK)]
+    [Tags(BookTag)]
+    [HttpGet($"{nameof(GetAll)}")]
+    [ProducesResponseType(typeof(List<Book>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetAll()
@@ -73,8 +58,8 @@ public class BookController : ControllerBase, IBookController
     /// </summary>
     /// <param name="code"></param>
     /// <returns></returns>
-    [Tags("Get")]
-    [HttpGet("GetByCode/{code}")]
+    [Tags(BookTag)]
+    [HttpGet($"{nameof(GetByCode)}/{{code}}")]
     [ProducesResponseType(typeof(Book), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -83,53 +68,33 @@ public class BookController : ControllerBase, IBookController
         try
         {
             var books = await BookStore.GetByCodeAsync(code);
-            return books is null ? NotFound() : Ok(books);
+            return books is null ? base.NotFound() : base.Ok(books);
         }
-        catch (KeyNotFoundException)
+        catch (StoreIsEmptyException)
+        {
+
+            return base.NotFound();
+        }
+        catch (BookCodeNotFoundException)
         {
 
             return NotFound();
         }
-        catch (NullReferenceException)
-        {
-            return BadRequest();
-        }
-        catch (InvalidOperationException)
-        {
-            return BadRequest();
-        }
-    }
-    /// <summary>
-    /// Get books by title.
-    /// </summary>
-    /// <param name="title"></param>
-    /// <returns></returns>
-    [Tags("Get")]
-    [HttpGet("GetByTitle")]
-    [ProducesResponseType(typeof(Dictionary<int, Book>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetByTitle([FromQuery] string? title)
-    {
-        try
-        {
-            var books = await BookStore.GetByTitleAsync(title);
-            return books is null || books.Count == 0 ? NotFound() : Ok(books);
-        }
         catch (Exception)
         {
 
-            return BadRequest();
+            return base.BadRequest();
         }
     }
     /// <summary>
-    /// Get books by title.
+    /// Get books by position.
     /// </summary>
     /// <param name="position"></param>
     /// <returns></returns>
-    [Tags("Get")]
-    [HttpGet("GetByPosition")]
+    [Tags(BookTag)]
+    [HttpGet($"{nameof(GetByPosition)}")]
     [ProducesResponseType(typeof(Dictionary<int, Book>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetByPosition([FromQuery] int? position)
@@ -139,91 +104,17 @@ public class BookController : ControllerBase, IBookController
             var book = await BookStore.GetByPositionAsync(position);
             return book is null || book.Count == 0 ? NotFound() : Ok(book);
         }
+        catch (StoreIsEmptyException)
+        {
+
+            return NoContent();
+        }
+        catch (EmptyResultException)
+        {
+
+            return NoContent();
+        }
         catch (Exception)
-        {
-
-            return BadRequest();
-        }
-    }
-    /// <summary>
-    /// Get books by title.
-    /// </summary>
-    /// <param name="author"></param>
-    /// <returns></returns>
-    [Tags("Get")]
-    [HttpGet("GetByAuthor")]
-    [ProducesResponseType(typeof(Dictionary<int, Book>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetByAuthor([FromQuery] string? author)
-    {
-        try
-        {
-            var books = await BookStore.GetByAuthorAsync(author);
-            return books is null || books.Count == 0 ? NotFound() : Ok(books);
-        }
-        catch (NullReferenceException)
-        {
-
-            return BadRequest();
-        }
-        catch (InvalidOperationException)
-        {
-
-            return BadRequest();
-        }
-    }
-    /// <summary>
-    /// Get books by genre.
-    /// </summary>
-    /// <param name="genre"></param>
-    /// <returns></returns>
-    [Tags("Get")]
-    [HttpGet("GetByGenre")]
-    [ProducesResponseType(typeof(Dictionary<int, Book>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetByGenre(EGenre? genre)
-    {
-        try
-        {
-            var books = await BookStore.GetByGenreAsync(genre);
-            return books == null || books.Count == 0 ? NotFound() : Ok(books);
-        }
-        catch (NullReferenceException)
-        {
-
-            return BadRequest();
-        }
-        catch (InvalidOperationException)
-        {
-
-            return BadRequest();
-        }
-    }
-    /// <summary>
-    /// Get books giving the porperties of a book.
-    /// </summary>
-    /// <param name="book"></param>
-    /// <returns></returns>
-    [Tags("Get")]
-    [HttpPost("GetByDefinition")]
-    [ProducesResponseType(typeof(Dictionary<int, Book>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetByDefinition([FromBody] BookSearch book)
-    {
-        try
-        {
-            var books = await BookStore.GetByDefinitionAsync(book);
-            return books == null || books.Count == 0 ? NotFound() : Ok(books);
-        }
-        catch (NullReferenceException)
-        {
-
-            return BadRequest();
-        }
-        catch (InvalidOperationException)
         {
 
             return BadRequest();
@@ -234,8 +125,8 @@ public class BookController : ControllerBase, IBookController
     /// </summary>
     /// <param name="book"></param>
     /// <returns></returns>
-    [Tags("Insert")]
-    [HttpPut("Insert")]
+    [Tags(BookTag)]
+    [HttpPut($"{nameof(Insert)}")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Insert([FromBody] Book book)
@@ -243,26 +134,76 @@ public class BookController : ControllerBase, IBookController
         try
         {
             await BookStore.InsertAsync(book);
+            return base.CreatedAtAction(nameof(Insert), new { serialNumber = book.Code }, book);
+        }
+        catch (NoPublicationCorrespondenceException)
+        {
 
-            return CreatedAtAction(nameof(Insert), new { serialNumber = book.Code }, book);
+            return base.BadRequest();
+        }
+        catch (PositionAlreadyOccupiedException)
+        {
+
+            return base.BadRequest();
         }
         catch (InvalidOperationException)
         {
 
-            return BadRequest();
+            return base.BadRequest();
         }
-        catch (KeyNotFoundException)
+        catch (System.Collections.Generic.KeyNotFoundException)
         {
 
-            return BadRequest();
+            return base.BadRequest();
+        }
+    }
+    /// <summary>
+    /// Register a new book one-shot.
+    /// </summary>
+    /// <param name="newRelease"></param>
+    /// <returns></returns>
+    [Tags(BookTag)]
+    [HttpPut($"{nameof(Register)}")]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Register([FromBody] NewRelease newRelease)
+    {
+        try
+        {
+            await PublicationStore.InsertAsync(newRelease.Publication);
+
+            var book = new Book(newRelease.Code, newRelease.Publication.Isbn, newRelease.Position);
+            await BookStore.InsertAsync(book);
+
+            return base.CreatedAtAction(nameof(Insert), new { serialNumber = book.Code }, book);
+        }
+        catch (NoPublicationCorrespondenceException)
+        {
+
+            return base.BadRequest();
+        }
+        catch (PositionAlreadyOccupiedException)
+        {
+
+            return base.BadRequest();
+        }
+        catch (InvalidOperationException)
+        {
+
+            return base.BadRequest();
+        }
+        catch (System.Collections.Generic.KeyNotFoundException)
+        {
+
+            return base.BadRequest();
         }
     }
     /// <summary>
     /// Delete all books from store.
     /// </summary>
     /// <returns></returns>
-    [Tags("Delete")]
-    [HttpDelete("DeleteAll")]
+    [Tags(BookTag)]
+    [HttpDelete($"{nameof(DeleteAll)}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -289,8 +230,8 @@ public class BookController : ControllerBase, IBookController
     /// </summary>
     /// <param name="code"></param>
     /// <returns></returns>
-    [Tags("Delete")]
-    [HttpDelete("DeleteByCode/{code}")]
+    [Tags(BookTag)]
+    [HttpDelete($"{nameof(DeleteByCode)}/{{code}}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -299,20 +240,20 @@ public class BookController : ControllerBase, IBookController
         try
         {
             await BookStore.DeleteByCodeAsync(code);
-            return NoContent();
+            return base.NoContent();
         }
         catch (InvalidOperationException)
         {
 
-            return NotFound();
+            return base.NotFound();
         }
         catch (NullReferenceException)
         {
-            return BadRequest();
+            return base.BadRequest();
         }
-        catch (KeyNotFoundException)
+        catch (System.Collections.Generic.KeyNotFoundException)
         {
-            return NotFound();
+            return base.NotFound();
         }
     }
     /// <summary>
@@ -320,8 +261,8 @@ public class BookController : ControllerBase, IBookController
     /// </summary>
     /// <param name="book"></param>
     /// <returns></returns>
-    [Tags("Update")]
-    [HttpPost]
+    [Tags(BookTag)]
+    [HttpPost($"{nameof(Update)}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -329,25 +270,35 @@ public class BookController : ControllerBase, IBookController
     {
         try
         {
-            await BookStore.UpdateAsync(book);
+            await BookStore.UpdatePositionAsync(book);
 
-            return CreatedAtAction(nameof(Update), new { serialNumber = book.Code }, book);
+            return base.CreatedAtAction(nameof(Update), new { serialNumber = book.Code }, book);
         }
-        catch (KeyNotFoundException)
+        catch (System.Collections.Generic.KeyNotFoundException)
         {
 
-            return NotFound();
+            return base.NotFound();
         }
         catch (InvalidOperationException)
         {
 
-            return BadRequest();
+            return base.BadRequest();
         }
         catch (NullReferenceException)
         {
 
-            return BadRequest();
+            return base.BadRequest();
         }
     }
     #endregion
+
+    /// <summary>
+    /// Model for one-shot registration of book in <see cref="Register(NewRelease)"/> method.
+    /// </summary>
+    public class NewRelease
+    {
+        public string Code { get; set; }
+        public Publication Publication { get; set; }
+        public int? Position { get; set; } = null;
+    }
 }

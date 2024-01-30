@@ -10,6 +10,7 @@ namespace Library.Core.API.Controllers;
 [ApiController]
 public class CardController : ControllerBase, ICardController
 {
+    private const string CardTag = "Card";
     private readonly ICardStore CardStore;
     private readonly IReservationStore ReservationStore;
     private readonly IUserStore UserStore;
@@ -21,13 +22,13 @@ public class CardController : ControllerBase, ICardController
         this.UserStore = userStore;
     }
 
-    [Tags("Delete")]
-    [HttpDelete("Delete/{cardNumber}")]
-    public async Task<IActionResult> Delete(Card card)
+    [Tags(CardTag)]
+    [HttpDelete($"{nameof(Delete)}/{{cardNumber}}")]
+    public async Task<IActionResult> Delete(int cardNumber)
     {
         try
         {
-            await CardStore.DeleteAsync(card, ReservationStore, UserStore);
+            await CardStore.DeleteAsync(cardNumber, ReservationStore, UserStore);
             return NoContent();
         }
         catch (InvalidOperationException)
@@ -44,15 +45,18 @@ public class CardController : ControllerBase, ICardController
             return NotFound();
         }
     }
-
-    [Tags("Get")]
-    [HttpGet("Get")]
+    /// <summary>
+    /// Get parameterless.
+    /// </summary>
+    /// <returns></returns>
+    [Tags(CardTag)]
+    [HttpGet($"{nameof(Get)}")]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Get()
     {
         try
         {
-            var cards = await CardStore.GetAsync();
+            var cards = await CardStore.GetStore();
             return cards is null ? NotFound() : Ok(cards);
         }
         catch (Exception)
@@ -61,9 +65,13 @@ public class CardController : ControllerBase, ICardController
             return BadRequest();
         }
     }
-
-    [Tags("Get")]
-    [HttpGet("Get/{cardNumber}")]
+    /// <summary>
+    /// Get by card number.
+    /// </summary>
+    /// <param name="cardNumber"></param>
+    /// <returns></returns>
+    [Tags(CardTag)]
+    [HttpGet($"{nameof(Get)}/{{cardNumber}}")]
     [ProducesResponseType(typeof(Card), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -89,8 +97,8 @@ public class CardController : ControllerBase, ICardController
         }
     }
 
-    [Tags("Get")]
-    [HttpGet("GetIsBlocked/{isBlocked}")]
+    [Tags(CardTag)]
+    [HttpGet($"{nameof(GetIsBlocked)}/{{isBlocked}}")]
     [ProducesResponseType(typeof(List<Card>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -115,9 +123,13 @@ public class CardController : ControllerBase, ICardController
             return BadRequest();
         }
     }
-
-    [Tags("Insert")]
-    [HttpPut("Insert")]
+    /// <summary>
+    /// Insert.
+    /// </summary>
+    /// <param name="card"></param>
+    /// <returns></returns>
+    [Tags(CardTag)]
+    [HttpPut($"{nameof(Insert)}")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -141,8 +153,8 @@ public class CardController : ControllerBase, ICardController
         }
     }
 
-    [Tags("Update")]
-    [HttpPost]
+    [Tags(CardTag)]
+    [HttpPost($"{nameof(UpdateIsBlocked)}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

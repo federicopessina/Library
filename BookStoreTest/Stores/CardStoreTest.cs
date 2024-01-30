@@ -1,4 +1,6 @@
-﻿using Library.Core.Stores;
+﻿using Library.Core.Exceptions.CardStore;
+using Library.Core.Exceptions.Results;
+using Library.Core.Stores;
 using Library.Entities;
 using Library.Interfaces;
 using Library.Interfaces.Stores;
@@ -12,18 +14,34 @@ namespace Library.Core.Test.Stores;
 
 public class CardStoreTest
 {
-    #region Properties
-    public IBookStore BookStore { get; set; }
-    public ICardStore CardStore { get; set; } 
-    public IPersonStore PersonStore { get; set; }
-    public IUserStore UserStore { get; set; } 
-    public IReservationStore ReservationStore { get; set; }
+    #region Variables
+    private const int Card1Number = 777;
+    private const int CardNotInStoreNumber = 987;
+    private const int Book1Position = 325;
+    private const string Book1Code = "book1Code";
+    private const string ISBN1 = "isbn1";
+    private const string PersonId = "personIdCode";
+
+    private Publication Publication1 = new Publication(ISBN1);
+    private Card Card1 = new Card(Card1Number, false);
+    private Card CardNotInStore = new Card(CardNotInStoreNumber, false);
+    private Book Book1 = new Book(Book1Code, ISBN1, Book1Position);
+    private Person Person1 = new Person(PersonId);
+    private Reservation Reservation1 = new Reservation(Book1Code, new Mock<Period>().Object);
     #endregion
+
+    public IPublicationStore PublicationStore { get; set; }
+    public IBookStore BookStore { get; set; }
+    public ICardStore CardStore { get; set; }
+    public IPersonStore PersonStore { get; set; }
+    public IUserStore UserStore { get; set; }
+    public IReservationStore ReservationStore { get; set; }
 
     #region Constructors
     public CardStoreTest()
     {
-        BookStore = new BookStore();
+        PublicationStore = new PublicationStore();
+        BookStore = new BookStore(PublicationStore);
         PersonStore = new PersonStore();
         CardStore = new CardStore();
         UserStore = new UserStore(CardStore, PersonStore);
@@ -31,172 +49,144 @@ public class CardStoreTest
     }
     #endregion
 
-    [Fact]
-    public async Task DeleteAsync_IfStoreIsNull_ThrowsException_Async()
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(5)]
+    [InlineData(40)]
+    [InlineData(100)]
+    public async Task Count_ReturnsNumberOfElements_InStore_Async(int count)
     {
-        // Arrange
-        CardStore.Store = null;
+        for (int i = 0; i < count; i++)
+        {
+            await CardStore.InsertAsync(new Card(i));
+        }
 
-        // Act & Assert
-        await Assert.ThrowsAsync<NullReferenceException>(async () => await CardStore.DeleteAsync(new Card(0), ReservationStore, UserStore));
+        Assert.Equal(count, await CardStore.Count());
+    }
+
+    [Fact]
+    public async Task Contains_ReturnsIfCardInStore_Async()
+    {
+        await CardStore.InsertAsync(Card1);
+
+        var store = await CardStore.GetStore();
+        Assert.Contains(Card1, store.Values);
+        Assert.DoesNotContain(CardNotInStore, store.Values);
     }
 
     [Fact]
     public async Task DeleteAsync_IfStoreIsEmpty_ThrowsException_Async()
     {
-        // Arrange & Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(async () => await CardStore.DeleteAsync(new Card(0), ReservationStore, UserStore));
+        await Assert.ThrowsAsync<StoreIsEmptyException>(async ()
+            => await CardStore.DeleteAsync(Card1.Number, ReservationStore, UserStore));
     }
 
     [Fact]
     public async Task DeleteAsync_IfStoreDoesNotContainsKey_ThrowsException_Async()
     {
-        // Arrange
-        const int Number = 1;
-        await CardStore.InsertAsync(new Card(Number));
+        await CardStore.InsertAsync(Card1);
 
-        // Act & Assert
-        await Assert.ThrowsAsync<KeyNotFoundException>(async () =>
+        await Assert.ThrowsAsync<CardNumberNotFoundException>(async () =>
         {
-            const int NumberNotInStore = 0;
-            await CardStore.DeleteAsync(new Card(NumberNotInStore), ReservationStore, UserStore);
+            await CardStore.DeleteAsync(CardNotInStore.Number, ReservationStore, UserStore);
         });
     }
 
     [Fact]
     public async Task DeleteAsync_IfReservationStore_ContainsKeyCard_ThrowsException_Async()
     {
-        // Arrange
-        var card = new Card(1);
-        var book = new Book("1", 1);
+        await PublicationStore.InsertAsync(Publication1);
+        await BookStore.InsertAsync(Book1);
+        await CardStore.InsertAsync(Card1);
+        await ReservationStore.InsertAsync(Card1.Number, Reservation1);
 
-        await BookStore.InsertAsync(book);
-        await CardStore.InsertAsync(card);
-        var reservation = new Reservation(book.Code, new Period());
-
-        await ReservationStore.InsertAsync(card.Number, reservation);
-
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(async ()
-            => { await CardStore.DeleteAsync(card, ReservationStore, UserStore); });
+        await Assert.ThrowsAsync<ReservationOpenException>(async ()
+            => { await CardStore.DeleteAsync(Card1.Number, ReservationStore, UserStore); });
     }
 
     [Fact]
     public async Task DeleteAsync_IfUserStore_ContainsKeyCard_ThrowsException_Async()
     {
         // Arrange
-        var card = new Card(1);
-        var person = new Person("1");
-
-        await CardStore.InsertAsync(card);
-        await PersonStore.InsertAsync(person);
-        var reservation = new Reservation("1", new Period());
-
-        await UserStore.InsertAsync(card.Number, person.IdCode);
+        await CardStore.InsertAsync(Card1);
+        await PersonStore.InsertAsync(Person1);
+        await UserStore.InsertAsync(Card1.Number, Person1.Id);
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(async ()
-            => { await CardStore.DeleteAsync(card, ReservationStore, UserStore); });
+        await Assert.ThrowsAsync<UserRegisteredException>(async ()
+            => { await CardStore.DeleteAsync(Card1.Number, ReservationStore, UserStore); });
     }
 
     [Fact]
     public async Task DeleteAsync_DeletesCardInStore_Async()
     {
-        // Arrange
-        var card = new Card(1);
-        var differentCard = new Card(2);
+        await CardStore.InsertAsync(Card1);
+        await CardStore.InsertAsync(CardNotInStore);
 
-        await CardStore.InsertAsync(card);
-        await CardStore.InsertAsync(differentCard);
+        Assert.Contains(CardNotInStore, await CardStore.GetValues());
+        
+        await CardStore.DeleteAsync(CardNotInStore.Number, ReservationStore, UserStore);
 
-        int numOfItemsInStoreBefore = CardStore.Store.Count;
-
-        // Act
-        await CardStore.DeleteAsync(card, ReservationStore, UserStore);
-
-        // Assert
-        int numOfItemsInStoreAfter = CardStore.Store.Count;
-
-        Assert.True(numOfItemsInStoreBefore > numOfItemsInStoreAfter);
-        Assert.DoesNotContain(card, CardStore.Store.Values);
-        Assert.Contains(differentCard, CardStore.Store.Values);
+        Assert.DoesNotContain(CardNotInStore, await CardStore.GetValues());
+        Assert.Contains(Card1, await CardStore.GetValues());
     }
 
     [Fact]
-    public async Task GetAsync_IfStoreIsNull_ThrowsException_Async()
+    public async Task GetAsync_IfStoreIsEmpty_ThrowException()
     {
-        // Arrange
-        CardStore.Store = null;
-
-        // Act & Assert
-        await Assert.ThrowsAsync<NullReferenceException>(async ()
-            => await CardStore.GetAsync(1));
-    }
-
-    [Fact]
-    public async Task GetAsync_IfStoreIsEmpty_ThrowsException_Async()
-    {
-        // Arrange
-        CardStore.Store.Clear();
-
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(async ()
-            => await CardStore.GetAsync(1));
+        await Assert.ThrowsAsync<StoreIsEmptyException>(async ()
+            => { await CardStore.GetAsync(Card1.Number); });
     }
 
     [Fact]
     public async Task GetAsync_IfStoreDoesNotContainKey_ThrowsException_Async()
     {
-        // Arrange
-        const int cardNumber = 1;
-        await CardStore.InsertAsync(new Card(cardNumber));
+        await CardStore.InsertAsync(Card1);
 
-        // Act & Assert
-        const int differentCardNumber = 2;
-        await Assert.ThrowsAsync<KeyNotFoundException>(async ()
-            => { await CardStore.GetAsync(differentCardNumber); });
+        await Assert.ThrowsAsync<CardNumberNotFoundException>(async ()
+            => { await CardStore.GetAsync(CardNotInStore.Number); });
     }
 
     [Fact]
-    public async Task GetAsync_IfStorContainKey_ReturnsCard_Async()
+    public async Task GetAsync_IsNotPassedByReference_Async()
     {
-        // Arrange
-        const int cardNumber = 1;
-        await CardStore.InsertAsync(new Card(cardNumber));
+        Card1.IsBlocked = true;
+        await CardStore.InsertAsync(Card1);
 
-        // Act
-        var card = await CardStore.GetAsync(cardNumber);
+        var possibleReference = await CardStore.GetAsync(Card1.Number);
+        possibleReference.IsBlocked = false;
 
-        // Assert
-        Assert.Equal(cardNumber, card.Number);
+        Assert.True(Card1.IsBlocked);
     }
 
     [Fact]
-    public async Task GetBlockedAsync_IfStoreIsNull_ThrowsException_Async()
+    public async Task GetAsync_IfStoreContainsKey_ReturnsCard_Async()
     {
-        // Arrange
-        CardStore.Store = null;
+        await CardStore.InsertAsync(Card1);
 
-        // Act & Assert
-        await Assert.ThrowsAsync<NullReferenceException>(async ()
-            => await CardStore.GetIsBlockedAsync(true));
+        var cardResult = await CardStore.GetAsync(Card1.Number);
+
+        Assert.Equal(Card1Number, cardResult.Number);
     }
 
-    [Fact]
-    public async Task GetBlockedAsync_IfStoreEmpty_ThrowsException_Async()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task GetIsBlockedAsync_IfStoreEmpty_ThrowsException_Async(bool isBlocked)
     {
-        // Arrange & Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(async ()
-            => await CardStore.GetIsBlockedAsync(true));
+        await Assert.ThrowsAsync<StoreIsEmptyException>(async ()
+            => await CardStore.GetIsBlockedAsync(isBlocked));
     }
 
     [Theory]
     [InlineData(10, 10)]
     [InlineData(5, 10)]
     [InlineData(10, 7)]
-    [InlineData(0, 10)]
-    [InlineData(7, 0)]
-    public async Task GetBlockedAsync_ReturnsCards_Async(int numOfCardsBlocked, int numOfCardsUnblocked)
+    [InlineData(1, 10)]
+    [InlineData(7, 1)]
+    public async Task GetIsBlockedAsync_ReturnsCards_Async(int numOfCardsBlocked, int numOfCardsUnblocked)
     {
         // Arrange
         for (int i = 0; i < numOfCardsBlocked; i++)
@@ -218,61 +208,50 @@ public class CardStoreTest
         Assert.Equal(numOfCardsUnblocked, resultUnblocked.Count);
     }
 
+    [Theory]
+    [InlineData(true)]
+    public async Task GetIsBlockedAsync_IfResultIsEmpty_ThrowsException_Async(bool isBlocked)
+    {
+        await CardStore.InsertAsync(Card1);
+
+        await Assert.ThrowsAsync<EmptyResultException>(async ()
+            => await CardStore.GetIsBlockedAsync(isBlocked));
+    }
+
     [Fact]
     public async Task InsertAsync_InsertsCardInStore_Async()
     {
-        // Arrange & Act
-        const int Number = 000;
-        await CardStore.InsertAsync(new Card(Number));
+        await CardStore.InsertAsync(Card1);
 
-        // Assert
-        Assert.NotNull(CardStore.Store);
-        Assert.NotEmpty(CardStore.Store);
-        Assert.Equal(Number, CardStore.Store[Number].Number);
-        Assert.False(CardStore.Store[Number].IsBlocked);
+        var resultCard = await CardStore.GetAsync(Card1Number);
+        Assert.NotEmpty(await CardStore.GetStore());
+        Assert.Equal(Card1Number, resultCard.Number);
+        Assert.False(resultCard.IsBlocked);
     }
 
     [Fact]
     public async Task InsertAsync_IfCardNumberAlreadyInStore_ThrowsException_Async()
     {
-        // Arrange
-        const int Number = 000;
-        await CardStore.InsertAsync(new Card(Number));
+        await CardStore.InsertAsync(Card1);
 
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(async () => await CardStore.InsertAsync(new Card(Number)));
-    }
-
-    [Fact]
-    public async Task UpdateIsBlockedAsync_IfCardNotInInStore_ThrowsException_Async()
-    {
-        // Arrange
-        const int Number = 000;
-        await CardStore.InsertAsync(new Card(Number));
-
-        // Act & Assert
-        const int DifferentNumber = 111;
-        await Assert.ThrowsAsync<KeyNotFoundException>(async () => await CardStore.UpdateIsBlockedAsync(DifferentNumber));
-    }
-
-    [Fact]
-    public async Task UpdateIsBlockedAsync_IfStoreIsNull_ThrowsException_Async()
-    {
-        // Arrange
-        CardStore.Store = null;
-
-        // Act & Assert
-        await Assert.ThrowsAsync<NullReferenceException>(async () => await CardStore.UpdateIsBlockedAsync(000));
+        await Assert.ThrowsAsync<DuplicatedCardNumberException>(async () 
+            => await CardStore.InsertAsync(Card1));
     }
 
     [Fact]
     public async Task UpdateIsBlockedAsync_IfStoreIsEmpty_ThrowsException_Async()
     {
-        // Arrange
-        CardStore.Store = new Dictionary<int, Card>();
+        await Assert.ThrowsAsync<StoreIsEmptyException>(async () 
+            => await CardStore.UpdateIsBlockedAsync(Card1Number));
+    }
 
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(async () => await CardStore.UpdateIsBlockedAsync(000));
+    [Fact]
+    public async Task UpdateIsBlockedAsync_IfCardNotInInStore_ThrowsException_Async()
+    {
+        await CardStore.InsertAsync(Card1);
+
+        await Assert.ThrowsAsync<CardNumberNotFoundException>(async () 
+            => await CardStore.UpdateIsBlockedAsync(CardNotInStoreNumber));
     }
 
     [Theory]
@@ -280,14 +259,11 @@ public class CardStoreTest
     [InlineData(false)]
     public async Task UpdateIsBlockedAsync_UpdatesIsBlockedProp_Async(bool isBlocked)
     {
-        // Arrange
-        const int Number = 000;
-        await CardStore.InsertAsync(new Card(Number, false));
+        await CardStore.InsertAsync(Card1);
 
-        // Act
-        await CardStore.UpdateIsBlockedAsync(Number, isBlocked);
+        await CardStore.UpdateIsBlockedAsync(Card1.Number, isBlocked);
 
-        // Assert
-        Assert.Equal(isBlocked, CardStore.Store[Number].IsBlocked);
+        var resultCard = await CardStore.GetAsync(Card1Number);
+        Assert.Equal(isBlocked, resultCard.IsBlocked);
     }
 }

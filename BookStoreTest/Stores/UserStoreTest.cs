@@ -1,9 +1,8 @@
-﻿using Library.Core.Stores;
+﻿using Library.Core.Exceptions.UserStore;
+using Library.Core.Stores;
 using Library.Entities;
 using Library.Interfaces;
 using Library.Interfaces.Stores;
-using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using Xunit;
 
@@ -11,6 +10,17 @@ namespace Library.Core.Test.Stores;
 
 public class UserStoreTest
 {
+    #region Variables
+    private const int Card1Number = 123;
+    private const int Card2Number = 345;
+    private const string PersonId1 = "pesonId1";
+    private const string PersonId2 = "pesonId2";
+    private Card Card1 = new Card(Card1Number);
+    private Card Card2 = new Card(Card2Number);
+    private Person Person1 = new Person(PersonId1);
+    private Person Person2 = new Person(PersonId2);
+    #endregion
+
     private ICardStore CardStore { get; set; }
     private IPersonStore PersonStore { get; set; }
     private IUserStore UserStore { get; set; }
@@ -23,21 +33,10 @@ public class UserStoreTest
     }
 
     [Fact]
-    public async Task DeleteAsync_IfStoreIsNull_ThrowsException_Async()
-    {
-        // Arrange
-        UserStore.Store = null;
-
-        // Act & Arrange
-        await Assert.ThrowsAsync<NullReferenceException>(async ()
-            => await UserStore.DeleteAsync(1));
-    }
-
-    [Fact]
     public async Task DeleteAsync_IfStoreIsEmpty_ThrowsException_Async()
     {
         // Arrange & Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(async ()
+        await Assert.ThrowsAsync<StoreIsEmptyException>(async ()
             => await UserStore.DeleteAsync(1));
     }
 
@@ -45,15 +44,12 @@ public class UserStoreTest
     public async Task DeleteAsync_IfStoreDoesNotContainsCard_ThrowsException_Async()
     {
         // Arrange
-        var card = new Card(1);
-        var person = new Person("1");
-
-        await CardStore.InsertAsync(card);
-        await PersonStore.InsertAsync(person);
-        await UserStore.InsertAsync(card.Number, person.IdCode);
+        await CardStore.InsertAsync(Card1);
+        await PersonStore.InsertAsync(Person1);
+        await UserStore.InsertAsync(Card1.Number, Person1.Id);
 
         // Act & Assert
-        await Assert.ThrowsAsync<KeyNotFoundException>(async ()
+        await Assert.ThrowsAsync<CardNotFoundException>(async ()
             => await UserStore.DeleteAsync(2));
     }
 
@@ -61,60 +57,41 @@ public class UserStoreTest
     public async Task DeleteAsync_DeletesUserFromStore_Async()
     {
         // Arrange
-        var card = new Card();
-        var person = new Person("1");
-
-        await CardStore.InsertAsync(card);
-        await PersonStore.InsertAsync(person);
-        await UserStore.InsertAsync(card.Number, person.IdCode);
+        await CardStore.InsertAsync(Card1);
+        await PersonStore.InsertAsync(Person1);
+        await UserStore.InsertAsync(Card1.Number, Person1.Id);
 
         // Act & Assert
-        Assert.NotNull(UserStore.Store);
-        Assert.Contains(card.Number, UserStore.Store.Keys);
-        
-        await UserStore.DeleteAsync(card.Number);
+        var storeBefore = await UserStore.GetStore();
+        Assert.Contains(Card1.Number, storeBefore.Keys);
 
-        Assert.DoesNotContain(card.Number, UserStore.Store.Keys);
-    }
+        await UserStore.DeleteAsync(Card1.Number);
 
-    [Fact]
-    public async Task InsertAsync_IfStoreIsNull_ThrowsException_Async()
-    {
-        // Arrange
-        UserStore.Store = null;
-
-        // Act & Assert
-        await Assert.ThrowsAsync<NullReferenceException>(async ()
-            => await UserStore.InsertAsync(1, "1"));
+        var storeAfter = await UserStore.GetStore();
+        Assert.DoesNotContain(Card1.Number, storeAfter.Keys);
     }
 
     [Fact]
     public async Task InsertAsync_InsertsUsers_Async()
     {
         // Arrange
-        var card1 = new Card(1);
-        var card2 = new Card(2);
+        await CardStore.InsertAsync(Card1);
+        await CardStore.InsertAsync(Card2);
 
-        var person1 = new Person("1");
-        var person2 = new Person("2");
-
-        await CardStore.InsertAsync(card1);
-        await CardStore.InsertAsync(card2);
-
-        await PersonStore.InsertAsync(person1);
-        await PersonStore.InsertAsync(person2);
+        await PersonStore.InsertAsync(Person1);
+        await PersonStore.InsertAsync(Person2);
 
         // Act
-        await UserStore.InsertAsync(card1.Number, person1.IdCode);
-        await UserStore.InsertAsync(card2.Number, person2.IdCode);
+        await UserStore.InsertAsync(Card1.Number, Person1.Id);
+        await UserStore.InsertAsync(Card2.Number, Person2.Id);
 
         // Assert
-        Assert.NotNull(UserStore.Store);
-        Assert.NotEmpty(UserStore.Store);
-        Assert.Contains(card1.Number, UserStore.Store.Keys);
-        Assert.Contains(card2.Number, UserStore.Store.Keys);
-        Assert.Equal(person1.IdCode, UserStore.Store[card1.Number]);
-        Assert.Equal(person2.IdCode, UserStore.Store[card2.Number]);
+        var store = await UserStore.GetStore();
+        Assert.NotEmpty(store);
+        Assert.Contains(Card1.Number, store.Keys);
+        Assert.Contains(Card2.Number, store.Keys);
+        Assert.Equal(Person1.Id, store[Card1.Number]);
+        Assert.Equal(Person2.Id, store[Card2.Number]);
 
     }
 
@@ -122,66 +99,44 @@ public class UserStoreTest
     public async Task InsertAsync_IfUserStore_ContainsAlreadyCard_ThrowsException_Async()
     {
         // Arrange
-        var card = new Card(1);
-        var person1 = new Person("1");
-        var person2 = new Person("2");
-
-        await CardStore.InsertAsync(card);
-        await PersonStore.InsertAsync(person1);
-        await PersonStore.InsertAsync(person2);
-
-        await UserStore.InsertAsync(card.Number, person1.IdCode);
+        await CardStore.InsertAsync(Card1);
+        await PersonStore.InsertAsync(Person1);
+        await PersonStore.InsertAsync(Person2);
+        await UserStore.InsertAsync(Card1.Number, Person1.Id);
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(async ()
-            => await UserStore.InsertAsync(card.Number, person2.IdCode));
+        await Assert.ThrowsAsync<DuplicatedCardException>(async ()
+            => await UserStore.InsertAsync(Card1.Number, Person2.Id));
     }
 
     [Fact]
     public async Task InsertAsync_IfUserStore_ContainsAlreadyPerson_ThrowsException_Async()
     {
         // Arrange
-        var card1 = new Card(1);
-        var card2 = new Card(2);
-
-        var person = new Person("1");
-
-        await CardStore.InsertAsync(card1);
-        await CardStore.InsertAsync(card2);
-        await PersonStore.InsertAsync(person);
-
-        await UserStore.InsertAsync(card1.Number, person.IdCode);
+        await CardStore.InsertAsync(Card1);
+        await CardStore.InsertAsync(Card2);
+        await PersonStore.InsertAsync(Person1);
+        await UserStore.InsertAsync(Card1.Number, Person1.Id);
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(async ()
-            => await UserStore.InsertAsync(card2.Number, person.IdCode));
+        await Assert.ThrowsAsync<DuplicatedPersonException>(async ()
+            => await UserStore.InsertAsync(Card2.Number, Person1.Id));
     }
 
     [Fact]
     public async Task InsertAsync_IfCardStore_DoesNotContainCard_ThrowsException_Async()
     {
-        // Arrange
-        CardStore.Store.Clear();
-
-        // Act & Assert
-        await Assert.ThrowsAsync<KeyNotFoundException>(async ()
-            => await UserStore.InsertAsync(new Card(1).Number, new Person("1").IdCode));
+        await Assert.ThrowsAsync<CardNotFoundException>(async ()
+            => await UserStore.InsertAsync(Card1.Number, Person1.Id));
     }
 
     [Fact]
     public async Task InsertAsync_IfPersonStore_DoesNotContainPerson_ThrowsException_Async()
     {
-        // Arrange
-        var card = new Card(1);
-        var person = new Person("1");
-        person.IdCode = "111";
+        await CardStore.InsertAsync(Card1);
+        await PersonStore.DeleteAll();
 
-        await CardStore.InsertAsync(card);
-
-        PersonStore.Store.Clear();
-
-        // Act & Assert
-        await Assert.ThrowsAsync<KeyNotFoundException>(async ()
-            => await UserStore.InsertAsync(card.Number, person.IdCode));
+        await Assert.ThrowsAsync<PersonNotFoundException>(async ()
+            => await UserStore.InsertAsync(Card1.Number, Person1.Id));
     }
 }

@@ -1,53 +1,79 @@
-﻿using Library.Entities;
+﻿using Library.Core.Exceptions.PersonStore;
+using Library.Entities;
 using Library.Interfaces;
 
 namespace Library.Core;
 
 public class PersonStore : IPersonStore
 {
-    #region Properties
     /// <summary>
     /// Key is id code, value is the <see cref="Person"/>.
     /// </summary>
     /// <remarks>Card number is primary key.</remarks>
-    public Dictionary<string, Person> Store { get; set; }
-    #endregion
+    private Dictionary<string, Person> Store { get; set; }
 
-    #region Constructors
     public PersonStore()
     {
-        if (Store is null)
-            Store = new Dictionary<string, Person>();
+        Store ??= new Dictionary<string, Person>();
     }
-    #endregion
 
     #region IUserStore Methods
-    public Task<Dictionary<string, Person>> GetAsync()
+    public async Task<bool> Contains(string idCode)
     {
-        if (Store is null) throw new NullReferenceException("Cannot get person from store because store is null");
-        if (Store.Count == 0) throw new InvalidOperationException("Cannot get person from store because store is empty.");
+        if (Store.ContainsKey(idCode))
+            return await Task.FromResult(true);
+    
+        return await Task.FromResult(false);
+    }
+
+    public async Task DeleteAll()
+    {
+        await Task.Run(() =>
+        {
+            Store.Clear();
+        });
+    }
+
+    public Task<Dictionary<string, Person>> GetStoreAsync()
+    {
+        if (Store.Count == 0) 
+            throw new StoreIsEmptyException(nameof(GetStoreAsync));
 
         return Task.FromResult(Store);
     }
 
-    public Task<Person> GetAsync(string idCode)
+    public Task<Person> GetById(string idCode)
     {
-        if (Store is null) throw new NullReferenceException("Cannot get person from store because store is null");
-        if (Store.Count == 0) throw new InvalidOperationException("Cannot get person from store because store is empty.");
-        if (!Store.ContainsKey(idCode)) throw new KeyNotFoundException($"Cannot get person from store because store does not contain key {idCode}");
+        if (Store.Count == 0)
+            throw new StoreIsEmptyException(nameof(GetById));
+
+        if (!Store.ContainsKey(idCode)) 
+            throw new IdCodeNotFoundException(nameof(GetById), idCode);
 
         return Task.FromResult(Store[idCode]);
+    }
+
+    public async Task<Dictionary<string, Person>> GetStore()
+    {
+        return await Task.FromResult(Store);
     }
 
     public async Task InsertAsync(Person person)
     {
         await Task.Run(() =>
         {
-            // TODO NullReferenceException
-            // TODO InvalidOperationException
-            if (Store.ContainsKey(person.IdCode)) throw new InvalidOperationException($"IdCode {person.IdCode} is already present in store.");
+            if (Store.ContainsKey(person.Id))
+                throw new DuplicatedIdException(nameof(InsertAsync), person.Id);
 
-            Store.Add(person.IdCode, person);
+            try
+            {
+                Store.Add(person.Id, person);
+            }
+            catch (Exception ex)
+            {
+
+                throw new InvalidOperationException($"Impossible to perform operation {nameof(InsertAsync)} because of the following exception {ex}");
+            }
         });
     }
 
@@ -62,7 +88,6 @@ public class PersonStore : IPersonStore
             user.Address = address;
         });
     }
-
     #endregion
 }
  

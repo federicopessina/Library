@@ -1,6 +1,6 @@
-﻿using Library.Entities;
+﻿using Library.Core.Exceptions.PersonStore;
+using Library.Entities;
 using Library.Interfaces;
-using Moq;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -10,87 +10,62 @@ namespace Library.Core.Test.Stores;
 
 public class PersonStoreTest
 {
-    #region Properties
+    private const string IdCode1 = "idCode1";
+    private const string IdCode2 = "idCode2";
+    private Person Person1 = new Person(IdCode1);
     private IPersonStore PersonStore { get; set; }
-    #endregion
 
-    #region Constructors
     public PersonStoreTest() => PersonStore = new PersonStore();
-    #endregion
 
     [Fact]
-    public async Task GetAsync_IfStoreIsNull_ThrowsException()
+    public async Task GetStoreAsync_IfStoreIsEmpty_ThrowsException()
     {
-        // Arrange
-        PersonStore.Store = null;
-
-        // Act & Assert
-        await Assert.ThrowsAsync<NullReferenceException>(async () => await PersonStore.GetAsync("1"));
-    }
-
-    [Fact]
-    public async Task GetAsync_IfStoreIsEmpty_ThrowsException()
-    {
-        // Arrange
-        PersonStore.Store.Clear();
-
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(async () => await PersonStore.GetAsync("1"));
+        await Assert.ThrowsAsync<StoreIsEmptyException>(async ()
+            => await PersonStore.GetStoreAsync());
     }
 
     [Fact]
     public async Task GetAsync_IfStoreDoesNotContainKey_ThrowsException()
     {
-        // Arrange
-        const string IdCode = "1";
-        await PersonStore.InsertAsync(new Person(IdCode));
+        await PersonStore.InsertAsync(Person1);
 
-        // Act & Assert
-        await Assert.ThrowsAsync<KeyNotFoundException>(async () =>
-        {
-            const string differentIdCode = "2";
-            await PersonStore.GetAsync(differentIdCode);
-        });
+        await Assert.ThrowsAsync<IdCodeNotFoundException>(async () 
+            => { await PersonStore.GetById(IdCode2); });
     }
 
     [Fact]
     public async Task GetAsync_ReturnsPerson_Async()
     {
-        // Arrange
-        const string IdCode = "1";
-        Person person = new Person(IdCode);
-        await PersonStore.InsertAsync(person);
+        await PersonStore.InsertAsync(Person1);
 
-        // Act
-        var result = await PersonStore.GetAsync(IdCode);
+        var result = await PersonStore.GetById(Person1.Id);
 
-        // Assert
-        Assert.Equal(person, result);
+        Assert.Equal(Person1, result);
     }
 
     [Fact]
     public async Task InsertAsync_InsertsPersonInStore_Async()
     {
-        // Arrange
-        var person = new Person("000", "Mario", "Rossi", new Address("Via Garibaldi", "100", "9000"));
+        await PersonStore.InsertAsync(Person1);
 
-        // Act
-        await PersonStore.InsertAsync(person);
-
-        // Assert
-        Assert.NotEmpty(PersonStore.Store);
+        Assert.NotEmpty(await PersonStore.GetStore());
     }
 
     [Fact]
     public async Task InsertAsync_IfIdCodeInStore_ThrowsException_Async()
     {
         // Arrange
-        var person1 = new Person("000", "Mario", "Rossi", new Address("Via Garibaldi", "100", "9000"));
-        var person2 = new Person("000", "Maria", "Viola", new Address("Via Rossellini", "200", "1000"));
+        var person1 = new Person();
+        var person2 = new Person();
+
+        person1.Id = IdCode1;
+        person2.Id = IdCode1;
 
         await PersonStore.InsertAsync(person1);
+
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(async () => await PersonStore.InsertAsync(person2));
+        await Assert.ThrowsAsync<DuplicatedIdException>(async () 
+            => await PersonStore.InsertAsync(person2));
     }
 
     [Fact]
@@ -106,7 +81,8 @@ public class PersonStoreTest
         await PersonStore.UpdateAddressAsync(IdCode, addressUpdated);
 
         // Assert
-        Assert.Equal(addressUpdated, PersonStore.Store[IdCode].Address);
+        var result = await PersonStore.GetById(IdCode);
+        Assert.Equal(addressUpdated, result.Address);
     }
 
     [Fact]
@@ -124,24 +100,8 @@ public class PersonStoreTest
     }
 
     [Fact]
-    public async Task UpdateAddressAsync_IfStoreIsNull_ThrowsException_Async()
-    {
-        // Arrange
-        PersonStore.Store = null;
-
-        // Act & Assert
-        await Assert.ThrowsAsync<NullReferenceException>(async ()
-            => await PersonStore.UpdateAddressAsync("111", new Address("Via Italia", "999", "0987")));
-    }
-
-    [Fact]
     public async Task UpdateAddressAsync_IfStoreIsEmpty_ThrowsException_Async()
     {
-        // Arrange
-        PersonStore.Store = new Dictionary<string, Person>();
-        PersonStore.Store.Clear();
-
-        // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(async ()
             => await PersonStore.UpdateAddressAsync("111", new Address("Via Italia", "999", "0987")));
     }
@@ -159,6 +119,7 @@ public class PersonStoreTest
         await PersonStore.UpdateAddressAsync(IdCode, newAddress);
 
         // Assert
-        Assert.Equal(newAddress, PersonStore.Store[person.IdCode].Address);
+        var result = await PersonStore.GetById(person.Id);
+        Assert.Equal(newAddress, result.Address);
     }
 }

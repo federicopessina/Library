@@ -5,16 +5,25 @@ using Library.Interfaces.Stores;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Library.Core.API.Controllers;
-
+/// <summary>
+/// ReservationController.
+/// </summary>
 [Route("api/[controller]")]
 [ApiController]
 public class ReservationController : ControllerBase, IReservationController
 {
+    private const string ReservationTag = "Reservation";
     private readonly IBookStore BookStore;
     private readonly ICardStore CardStore;
     private readonly IUserStore UserStore;
     private readonly IReservationStore ReservationStore;
-
+    /// <summary>
+    /// Contructor.
+    /// </summary>
+    /// <param name="bookStore"></param>
+    /// <param name="cardStore"></param>
+    /// <param name="userStore"></param>
+    /// <param name="reservationStore"></param>
     public ReservationController(IBookStore bookStore, ICardStore cardStore, IUserStore userStore, IReservationStore reservationStore)
     {
         this.BookStore = bookStore;
@@ -22,9 +31,12 @@ public class ReservationController : ControllerBase, IReservationController
         this.UserStore = userStore;
         this.ReservationStore = reservationStore;
     }
-
-    [Tags("Get")]
-    [HttpGet("GetAll")]
+    /// <summary>
+    /// GetAll.
+    /// </summary>
+    /// <returns></returns>
+    [Tags(ReservationTag)]
+    [HttpGet($"{nameof(GetAll)}")]
     [ProducesResponseType(typeof(Dictionary<int, Book>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -49,9 +61,13 @@ public class ReservationController : ControllerBase, IReservationController
             return BadRequest();
         }
     }
-
-    [Tags("Get")]
-    [HttpGet("GetDelayed")]
+    /// <summary>
+    /// Get all delayed reservations.
+    /// </summary>
+    /// <param name="isBlocked"></param>
+    /// <returns></returns>
+    [Tags(ReservationTag)]
+    [HttpGet($"{nameof(GetDelayed)}")]
     [ProducesResponseType(typeof(Dictionary<int, Book>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -69,21 +85,22 @@ public class ReservationController : ControllerBase, IReservationController
         }
         catch (NullReferenceException)
         {
+
             return BadRequest();
         }
         catch (InvalidOperationException)
         {
+
             return BadRequest();
         }
     }
-
     /// <summary>
-    /// 
+    /// Insert.
     /// </summary>
     /// <param name="tuple"></param>
     /// <returns></returns>
-    [Tags("Insert")]
-    [HttpPut("Insert")]
+    [Tags(ReservationTag)]
+    [HttpPut($"{nameof(Insert)}")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Insert(Tuple<int, Reservation> tuple)
@@ -111,9 +128,13 @@ public class ReservationController : ControllerBase, IReservationController
             return BadRequest();
         }
     }
-
-    [Tags("Update")]
-    [HttpPost]
+    /// <summary>
+    /// Update period of reservation.
+    /// </summary>
+    /// <param name="tuple"></param>
+    /// <returns></returns>
+    [Tags(ReservationTag)]
+    [HttpPost($"{nameof(UpdatePeriod)}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -123,7 +144,6 @@ public class ReservationController : ControllerBase, IReservationController
         {
             // TODO Change names.
             await ReservationStore.UpdatePeriodAsync(tuple.Item1, tuple.Item2, tuple.Item3);
-
             return CreatedAtAction(nameof(UpdatePeriod), new { cardNumber = tuple.Item1 }, tuple);
         }
         catch (KeyNotFoundException)
@@ -142,35 +162,4 @@ public class ReservationController : ControllerBase, IReservationController
             return BadRequest();
         }
     }
-
-    //[Tags("Update")]
-    //[HttpPost]
-    //[ProducesResponseType(StatusCodes.Status204NoContent)]
-    //[ProducesResponseType(StatusCodes.Status400BadRequest)]
-    //[ProducesResponseType(StatusCodes.Status404NotFound)]
-    //public async Task<IActionResult> UpdateStatus(Tuple<int, Reservation, Status> tuple)
-    //{
-    //    try
-    //    {
-    //        // TODO Change names.
-    //        await ReservationStore.UpdateStatusAsync(tuple.Item1, tuple.Item2, tuple.Item3);
-
-    //        return CreatedAtAction(nameof(UpdateStatus), new { cardNumber = tuple.Item1 }, tuple);
-    //    }
-    //    catch (KeyNotFoundException)
-    //    {
-
-    //        return NotFound();
-    //    }
-    //    catch (InvalidOperationException)
-    //    {
-
-    //        return BadRequest();
-    //    }
-    //    catch (NullReferenceException)
-    //    {
-
-    //        return BadRequest();
-    //    }
-    //}
 }

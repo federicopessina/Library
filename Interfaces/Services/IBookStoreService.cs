@@ -9,13 +9,7 @@ namespace Library.Interfaces
         Task GetAllBookAsync();
         Task GetBookByPositionAsync();
         Task GetBookByCodeAsync();
-        Task GetBooksByAuthorAsync();
-        Task GetBooksByDefinitionAsync();
-        Task GetBooksByGenreAsync();
-        Task GetBooksByTitleAsync();
-        Book InputBookConsole();
-        BookSearch InputBookSearchConsole();
-        Task PutBookAsync();
+        Task InsertBookAsync();
         Task UpdateBookAsync();
     }
 }

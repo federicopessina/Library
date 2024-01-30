@@ -4,7 +4,8 @@ namespace Library.Interfaces.Stores;
 
 public interface IUserStore
 {
-    Dictionary<int, string> Store { get; set; }
+    Task<bool> Contains(int cardNumber);
+    Task<Dictionary<int, string>> GetStore();
     Task DeleteAsync(int cardNumber);
     Task InsertAsync(int cardNumber, string user);
 }

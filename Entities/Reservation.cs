@@ -14,6 +14,13 @@ public class Reservation
         BookCode = bookCode;
         Period = period;
     }
+
+    public Reservation(string bookCode, Period period, Status status)
+    {
+        BookCode = bookCode;
+        Period = period;
+        Status = status;
+    }
 }
 
 public enum Status
@@ -23,7 +30,7 @@ public enum Status
     Returned = 2
 }
 
-public class Period // TODO Change public ?
+public class Period
 {
     private const int maxNoOfDays = 5;
 
@@ -41,6 +48,9 @@ public class Period // TODO Change public ?
     }
     public Period(DateTime dateFrom, DateTime dateTo)
     {
+        if (dateFrom > dateTo)
+            throw new InvalidOperationException("Impossible to have a period with dateTo previous to dateFrom");
+
         DateFrom = dateFrom;
         DateTo = dateTo;
     }

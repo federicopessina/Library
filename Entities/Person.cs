@@ -10,24 +10,22 @@ public sealed class Person
     /// </summary>
     /// <remarks>Primary key of a user.</remarks>
     [Required]
-    public string IdCode { get; set; }
+    public string Id { get; set; }
     public string? Name { get; set; } = null;
     public string? Surname { get; set; } = null;
     public Address? Address { get; set; } = null;
     #endregion
 
     #region Constructors
-    public Person()
-    {
+    public Person() { }
 
-    }
-    public Person(string idCode)
+    public Person(string id)
     {
-        IdCode = idCode;
+        Id = id;
     }
-    public Person(string idCode, string name, string surname, Address? address)
+    public Person(string id, string name, string surname, Address? address)
     {
-        IdCode = idCode;
+        Id = id;
         Name = name;
         Surname = surname;
         Address = address;

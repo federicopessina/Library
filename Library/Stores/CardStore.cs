@@ -1,82 +1,106 @@
-﻿using Library.Entities;
+﻿using Library.Core.Exceptions.CardStore;
+using Library.Core.Exceptions.Results;
+using Library.Entities;
 using Library.Interfaces.Stores;
 
 namespace Library.Core.Stores;
 
 public class CardStore : ICardStore
 {
-    #region Properties
     /// <summary>
     /// Key is card number, value is the <see cref="Card"/>.
     /// </summary>
-    public Dictionary<int, Card> Store { get; set; }
-    #endregion
+    private Dictionary<int, Card> Store { get; set; }
 
-    #region Constructors
     public CardStore()
     {
-        if (Store == null)
-            Store = new Dictionary<int, Card>();
+        Store ??= new Dictionary<int, Card>();
     }
-    #endregion
-    public async Task DeleteAsync(Card card, IReservationStore reservationStore, IUserStore userStore)
+
+    public async Task<int> Count()
+    {
+        return await Task.FromResult(Store.Count());
+    }
+
+    public async Task<bool> Contains(int cardNumber)
+    {
+        if (Store.ContainsKey(cardNumber))
+            return await Task.FromResult(true);
+
+        return await Task.FromResult(false);
+    }
+
+    public async Task DeleteAsync(int cardNumber, IReservationStore reservationStore, IUserStore userStore)
     {
         await Task.Run(() =>
         {
-            if (Store is null) throw new NullReferenceException("Cannot delete card in store because store is null.");
-            if (Store.Count == 0) throw new InvalidOperationException("Cannot delete card in store because store is empty.");
-            if (!Store.ContainsKey(card.Number)) throw new KeyNotFoundException("Cannot delete card in store because store does not contains key with card number.");
+            if (Store.Count == 0)
+                throw new StoreIsEmptyException(nameof(DeleteAsync));
 
-            // Block delete if there is card in reservation store.
-            // NOTE If yes, wait until all reservations have been deleted.
-            if (reservationStore.Store.ContainsKey(card.Number)) throw new InvalidOperationException("Cannot delete card in store because reservation store contains a reservation with card as key.");
-
-            // Block delete from user store if there is a card-person link there. // TODO Check.
-            // NOTE If yes, wait until all reservations have been deleted.
-            if (userStore.Store.ContainsKey(card.Number)) throw new InvalidOperationException("Cannot delete card in store because user store contains a user with card as key.");
-
-            Store.Remove(card.Number);
+            if (!Store.ContainsKey(cardNumber))
+                throw new CardNumberNotFoundException(nameof(DeleteAsync), cardNumber);
         });
-    }
 
-    public async Task<Dictionary<int, Card>> GetAsync()
-    {
-        return await Task.FromResult(Store);
+        // Block delete if there is card in reservation store.
+        // NOTE If yes, wait until all reservations have been deleted.
+        bool reservationStoreContainsCard = await reservationStore.Contains(cardNumber);
+        if (reservationStoreContainsCard)
+            throw new ReservationOpenException(nameof(DeleteAsync), cardNumber);
+
+        // Block delete from user store if there is a card-person link there.
+        // NOTE If yes, wait until all reservations have been deleted.
+        bool userStoreContainsCard = await userStore.Contains(cardNumber);
+        if (userStoreContainsCard)
+            throw new UserRegisteredException();
+
+        await Task.Run(() => { Store.Remove(cardNumber); });
     }
 
     public async Task<Card> GetAsync(int cardNumber)
     {
-        if (Store is null) throw new NullReferenceException("Cannot get cards in card store because card store is null");
-        if (Store.Count == 0) throw new InvalidOperationException("Cannot get cards in card store because card store is empty");
-        if (!Store.ContainsKey(cardNumber)) throw new KeyNotFoundException($"Unable to update isBlocked prop card in store because store does not contains key {cardNumber}");
+        if (Store.Count == 0)
+            throw new StoreIsEmptyException(nameof(GetAsync));
 
-        return await Task.FromResult(Store[cardNumber]);
+        if (!Store.ContainsKey(cardNumber))
+            throw new CardNumberNotFoundException(nameof(DeleteAsync), cardNumber);
+
+        return await Task.FromResult(Store[cardNumber].Clone());
     }
 
     public async Task<List<Card>> GetIsBlockedAsync(bool isBlocked)
     {
-        if (Store is null) throw new NullReferenceException("Cannot get cards in card store because card store is null");
-        if (Store.Count == 0) throw new InvalidOperationException("Cannot get cards in card store because card store is empty");
+        if (Store.Count == 0)
+            throw new StoreIsEmptyException(nameof(GetIsBlockedAsync));
 
         var result = new List<Card>();
         foreach (var item in Store)
         {
             if (item.Value.IsBlocked == isBlocked)
-            {
                 result.Add(item.Value);
-            }
         }
 
-        return await Task.FromResult(result);
+        if (!result.Any())
+            throw new EmptyResultException(nameof(GetIsBlockedAsync));
+
+        return await Task.FromResult(result.ToList());
     }
+
+    public async Task<Dictionary<int, Card>> GetStore()
+    {
+        return await Task.FromResult(Store.ToDictionary(item => item.Key, item => item.Value));
+    }
+
+    public async Task<List<Card>> GetValues()
+    {
+        return await Task.FromResult(Store.Values.ToList());
+    }
+    
     public async Task InsertAsync(Card card)
     {
         await Task.Run(() =>
         {
-            if (Store is null) throw new NullReferenceException("Cannot insert card in card store because card store is null");
-
             if (Store.ContainsKey(card.Number))
-                throw new ArgumentException($"Unable to insert card in store because store already contains key {card.Number}");
+                throw new DuplicatedCardNumberException(card.Number);
 
             Store.Add(card.Number, card);
         });
@@ -86,12 +110,13 @@ public class CardStore : ICardStore
     {
         await Task.Run(() =>
         {
-            if (Store is null) throw new NullReferenceException("Unable to update isBlocked prop card in store because store is null");
-            if (Store.Count.Equals(0)) throw new InvalidOperationException("Unable to update isBlocked prop card in store because store is empty");
-            if (!Store.ContainsKey(cardNumber)) throw new KeyNotFoundException($"Unable to update isBlocked prop card in store because store does not contains key {cardNumber}");
+            if (Store.Count == 0)
+                throw new StoreIsEmptyException(nameof(UpdateIsBlockedAsync));
+
+            if (!Store.ContainsKey(cardNumber))
+                throw new CardNumberNotFoundException(nameof(UpdateIsBlockedAsync), cardNumber);
 
             Store[cardNumber].IsBlocked = isBlocked;
         });
     }
-
 }

@@ -1,10 +1,20 @@
-﻿using Library.Console.Services;
+﻿//using Library.Console.Services;
+using Library.Console.Services;
 using Serilog;
 
 namespace Library.Console;
 
 public static class UserInterface
 {
+    private const string CommandGetAllBooks = "ga";
+    private const string CommandGetCodeBooks = "gc";
+    private const string CommandGetPositionBooks = "gp";
+    private const string CommandDeleteAllBooks = "da";
+    private const string CommandDeleteByCodeBook = "d";
+    private const string CommandInsertBook = "i";
+    private const string CommandCloseProgram = "x";
+    private const string CommandUpdateBook = "u";
+
     public static async Task DisplayHttpStatusCode(HttpClient client)
     {
         // Check status.
@@ -28,18 +38,14 @@ public static class UserInterface
     public static async Task Run(BookStoreService bss)
     {
         System.Console.WriteLine("\n" +
-        "Press [gs] to get book by serial number \n" +
-        "Press [gt] to get books by title \n" +
-        "Press [gp] to get book by position \n" +
-        "Press [ga] to get books by author \n" +
-        "Press [gg] to get books by genre \n" +
-        "Press [gd] to get books by book definition \n" +
-        "Press [da] to delete all books \n" +
-        "Press [g] to get all books \n" +
-        "Press [i] to insert book \n" +
-        "Press [d] to delete book \n" +
-        "Press [u] to update book \n" +
-        "Press [x] to close program \n");
+        $"Press [{CommandGetCodeBooks}] to Get book by Code \n" +
+        $"Press [{CommandGetPositionBooks}] to Get book by Position \n" +
+        $"Press [{CommandDeleteAllBooks}] to Delete All books \n" +
+        $"Press [{CommandGetAllBooks}] to Get All books \n" +
+        $"Press [{CommandInsertBook}] to Insert book \n" +
+        $"Press [{CommandDeleteByCodeBook}] to Delete book by Code \n" +
+        $"Press [{CommandUpdateBook}] to update book \n" +
+        $"Press [{CommandCloseProgram}] to Close program \n");
 
         // Interact with user.
         var input = string.Empty;
@@ -52,40 +58,28 @@ public static class UserInterface
 
             switch (input)
             {
-                case "i":
-                    await bss.PutBookAsync();
+                case CommandInsertBook:
+                    await bss.InsertBookAsync();
                     break;
-                case "g":
+                case CommandGetAllBooks:
                     await bss.GetAllBookAsync();
                     break;
-                case "gs":
+                case CommandGetCodeBooks:
                     await bss.GetBookByCodeAsync();
                     break;
-                case "gt":
-                    await bss.GetBooksByTitleAsync();
-                    break;
-                case "gp":
+                case CommandGetPositionBooks:
                     await bss.GetBookByPositionAsync();
                     break;
-                case "ga":
-                    await bss.GetBooksByAuthorAsync();
-                    break;
-                case "gg":
-                    await bss.GetBooksByGenreAsync();
-                    break;
-                case "gd":
-                    await bss.GetBooksByDefinitionAsync();
-                    break;
-                case "da":
+                case CommandDeleteAllBooks:
                     await bss.DeleteAllBooksAsync();
                     break;
-                case "d":
+                case CommandDeleteByCodeBook:
                     await bss.DeleteBookByCodeAsync();
                     break;
-                case "u":
+                case CommandUpdateBook:
                     await bss.UpdateBookAsync();
                     break;
-                case "x":
+                case CommandCloseProgram:
                     Log.Logger.Information("Library Program Ended.");
                     Environment.Exit(0);
                     break;
@@ -94,6 +88,6 @@ public static class UserInterface
                     break;
             }
 
-        } while (input is not null && !input.Equals("x"));
+        } while (input is not null && !input.Equals(CommandCloseProgram));
     }
 }

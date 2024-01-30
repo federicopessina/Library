@@ -4,7 +4,7 @@ namespace Library.Interfaces.Stores;
 
 public interface IReservationStore
 {
-    Dictionary<int, List<Reservation>> Store { get; set; }
+    Task<bool> Contains(int cardNumber);
     Task<List<Reservation>> GetDelayedAsync(bool? isBlocked);
     Task<Dictionary<int, List<Reservation>>> GetAllAsync();
     Task InsertAsync(int cardNumber, Reservation reservation);

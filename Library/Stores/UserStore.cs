@@ -1,4 +1,5 @@
-﻿using Library.Entities;
+﻿using Library.Core.Exceptions.UserStore;
+using Library.Entities;
 using Library.Interfaces;
 using Library.Interfaces.Stores;
 
@@ -6,59 +7,74 @@ namespace Library.Core.Stores;
 
 public class UserStore : IUserStore
 {
-    #region Properties
-    /// <summary>
-    /// Key is <see cref="Card.Number"/>, value is <see cref="Person.IdCode"/>.
-    /// </summary>
-    public Dictionary<int, string> Store { get; set; }
     private readonly ICardStore CardStore;
     private readonly IPersonStore PersonStore;
-    #endregion
+    /// <summary>
+    /// Key is <see cref="Card.Number"/>, value is <see cref="Person.Id"/>.
+    /// </summary>
+    private Dictionary<int, string> Store { get; set; }
 
-    #region Constructors
     public UserStore(ICardStore cardStore, IPersonStore personStore)
     {
         this.CardStore = cardStore;
         this.PersonStore = personStore;
 
-        if (Store is null)
-            Store = new Dictionary<int, string>();
+        Store ??= new Dictionary<int, string>();
     }
-    #endregion
+
+    public async Task<bool> Contains(int cardNumber)
+    {
+        if (Store.ContainsKey(cardNumber))
+            return await Task.FromResult(true);
+
+        return await Task.FromResult(false);
+    }
 
     public async Task DeleteAsync(int cardNumber)
     {
-        await Task.Run(() => {
-            if (Store is null) throw new NullReferenceException("Cannot delete user in store because store is null");
-            if (Store.Count == 0) throw new InvalidOperationException("Cannot delete user in store because store is empty");
-            if (!Store.ContainsKey(cardNumber)) throw new KeyNotFoundException("Cannot delete user in store because store does not contain card key");
+        await Task.Run(() =>
+        {
+            if (Store.Count == 0)
+                throw new StoreIsEmptyException(nameof(DeleteAsync));
+
+            if (!Store.ContainsKey(cardNumber))
+                throw new CardNotFoundException(nameof(DeleteAsync), cardNumber);
 
             Store.Remove(cardNumber);
         });
     }
 
-    public async Task InsertAsync(int cardNumber, string person)
+    public async Task<Dictionary<int, string>> GetStore()
     {
+        return await Task.FromResult(Store.ToDictionary(item => item.Key, item => item.Value));
+    }
+
+    public async Task InsertAsync(int cardNumber, string personId)
+    {
+        // Block insert if user is not in card store.
+        bool cardStoreContainsCardNumber = await CardStore.Contains(cardNumber);
+        if (!cardStoreContainsCardNumber)
+            throw new CardNotFoundException(nameof(InsertAsync), cardNumber);
+
+        // Block insert if user in not in person store.
+        bool personStoreContainsPerson = await PersonStore.Contains(personId);
+        if (!personStoreContainsPerson)
+            throw new PersonNotFoundException(nameof(InsertAsync), personId);
+
         await Task.Run(() =>
         {
-            if (Store == null) throw new NullReferenceException("Cannot insert user in store because store is null.");
-
             // Block insert if card is already in user store.
             // NOTE Assuming one-to-one correspondence card-person.
-            if (Store.ContainsKey(cardNumber)) throw new InvalidOperationException("Cannot insert user in store because store already contains user with same card number.");
-
-            // Block insert if user is not in card store or in person store.
-            if (!CardStore.Store.ContainsKey(cardNumber)) throw new KeyNotFoundException("Cannot insert user in store because card is not in card store.");
-            if (!PersonStore.Store.ContainsKey(person)) throw new KeyNotFoundException("Cannot insert user in store because person is not in person store.");
+            if (Store.ContainsKey(cardNumber))
+                throw new DuplicatedCardException(nameof(InsertAsync), cardNumber);
 
             // Block insert if person is already in user store.
             // NOTE Assuming one-to-one correspondence card-person.
             foreach (var item in Store)
-                if (item.Value == person)
-                    throw new InvalidOperationException("Cannot insert user in store because user is already in store with different card.");
+                if (item.Value == personId)
+                    throw new DuplicatedPersonException(nameof(InsertAsync), personId);
 
-            Store.Add(cardNumber, person);
+            Store.Add(cardNumber, personId);
         });
     }
-
 }
