@@ -22,12 +22,12 @@ public class CardStoreTest
     private const string ISBN1 = "isbn1";
     private const string PersonId = "personIdCode";
 
-    private Publication Publication1 = new Publication(ISBN1);
-    private Card Card1 = new Card(Card1Number, false);
-    private Card CardNotInStore = new Card(CardNotInStoreNumber, false);
-    private Book Book1 = new Book(Book1Code, ISBN1, Book1Position);
-    private Person Person1 = new Person(PersonId);
-    private Reservation Reservation1 = new Reservation(Book1Code, new Mock<Period>().Object);
+    private readonly Publication Publication1 = new(ISBN1);
+    private readonly Card Card1 = new(Card1Number, false);
+    private readonly Card CardNotInStore = new(CardNotInStoreNumber, false);
+    private readonly Book Book1 = new(Book1Code, ISBN1, Book1Position);
+    private readonly Person Person1 = new(PersonId);
+    private readonly Reservation Reservation1 = new(Book1Code, new Mock<Period>().Object);
     #endregion
 
     public IPublicationStore PublicationStore { get; set; }
@@ -37,7 +37,6 @@ public class CardStoreTest
     public IUserStore UserStore { get; set; }
     public IReservationStore ReservationStore { get; set; }
 
-    #region Constructors
     public CardStoreTest()
     {
         PublicationStore = new PublicationStore();
@@ -47,7 +46,6 @@ public class CardStoreTest
         UserStore = new UserStore(CardStore, PersonStore);
         ReservationStore = new ReservationStore(BookStore, CardStore, UserStore);
     }
-    #endregion
 
     [Theory]
     [InlineData(0)]
@@ -97,9 +95,11 @@ public class CardStoreTest
     [Fact]
     public async Task DeleteAsync_IfReservationStore_ContainsKeyCard_ThrowsException_Async()
     {
+        await PersonStore.InsertAsync(Person1);
         await PublicationStore.InsertAsync(Publication1);
         await BookStore.InsertAsync(Book1);
         await CardStore.InsertAsync(Card1);
+        await UserStore.InsertAsync(Card1.Number, Person1.Id);
         await ReservationStore.InsertAsync(Card1.Number, Reservation1);
 
         await Assert.ThrowsAsync<ReservationOpenException>(async ()

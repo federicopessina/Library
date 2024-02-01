@@ -13,8 +13,8 @@ public class PublicationStoreTest
     #region Variables
     private const string isbn1 = "1";
     private const string isbn2 = "2";
-    private Publication Publication1 = new Publication(isbn1);
-    private Publication Publication2 = new Publication(isbn2);
+    private readonly Publication Publication1 = new(isbn1);
+    private readonly Publication Publication2 = new(isbn2);
     public IPublicationStore PublicationStore { get; set; } 
     #endregion
 

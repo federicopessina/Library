@@ -1,8 +1,11 @@
-﻿namespace Library.Entities;
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace Library.Entities;
 
 public class Card
 {
-    public int Number { get; }
+    [Required]
+    public int Number { get; set; }
     public bool IsBlocked { get; set; } = false;
 
     public Card()

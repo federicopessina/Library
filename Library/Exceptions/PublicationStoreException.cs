@@ -20,6 +20,6 @@ public class DuplicatedIsbnException : PublicationStoreException
 
 public class IsbnNotFoundException : PublicationStoreException
 {
-    public IsbnNotFoundException(string isbn)
-        : base(string.Format("Impossible to perform operation because ISBN:{0} is not in store", isbn)) { }
+    public IsbnNotFoundException(string operation, string isbn)
+        : base(string.Format("Impossible to perform operation: {0} because ISBN:{1} is not in store", operation, isbn)) { }
 }

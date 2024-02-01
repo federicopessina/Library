@@ -15,10 +15,11 @@ public class UserStoreTest
     private const int Card2Number = 345;
     private const string PersonId1 = "pesonId1";
     private const string PersonId2 = "pesonId2";
-    private Card Card1 = new Card(Card1Number);
-    private Card Card2 = new Card(Card2Number);
-    private Person Person1 = new Person(PersonId1);
-    private Person Person2 = new Person(PersonId2);
+
+    private readonly Card Card1 = new(Card1Number);
+    private readonly Card Card2 = new(Card2Number);
+    private readonly Person Person1 = new(PersonId1);
+    private readonly Person Person2 = new(PersonId2);
     #endregion
 
     private ICardStore CardStore { get; set; }

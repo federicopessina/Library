@@ -1,8 +1,11 @@
-﻿using Library.Entities;
+﻿using Library.Core.Exceptions.BookStore;
+using Library.Core.Exceptions.ReservationStore;
+using Library.Entities;
 using Library.Interfaces;
 using Library.Interfaces.Controllers;
 using Library.Interfaces.Stores;
 using Microsoft.AspNetCore.Mvc;
+using StoreIsEmptyException = Library.Core.Exceptions.BookStore.StoreIsEmptyException;
 
 namespace Library.Core.API.Controllers;
 /// <summary>
@@ -13,6 +16,7 @@ namespace Library.Core.API.Controllers;
 public class ReservationController : ControllerBase, IReservationController
 {
     private const string ReservationTag = "Reservation";
+
     private readonly IBookStore BookStore;
     private readonly ICardStore CardStore;
     private readonly IUserStore UserStore;
@@ -38,6 +42,7 @@ public class ReservationController : ControllerBase, IReservationController
     [Tags(ReservationTag)]
     [HttpGet($"{nameof(GetAll)}")]
     [ProducesResponseType(typeof(Dictionary<int, Book>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetAll()
@@ -47,17 +52,14 @@ public class ReservationController : ControllerBase, IReservationController
             var reservations = await ReservationStore.GetAllAsync();
             return reservations is null ? NotFound() : Ok(reservations);
         }
-        catch (KeyNotFoundException)
+        catch (StoreIsEmptyException)
         {
 
-            return NotFound();
+            return NoContent();
         }
-        catch (NullReferenceException)
+        catch (Exception)
         {
-            return BadRequest();
-        }
-        catch (InvalidOperationException)
-        {
+
             return BadRequest();
         }
     }
@@ -69,6 +71,7 @@ public class ReservationController : ControllerBase, IReservationController
     [Tags(ReservationTag)]
     [HttpGet($"{nameof(GetDelayed)}")]
     [ProducesResponseType(typeof(Dictionary<int, Book>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetDelayed(bool? isBlocked = null)
@@ -78,17 +81,12 @@ public class ReservationController : ControllerBase, IReservationController
             var reservations = await ReservationStore.GetDelayedAsync(isBlocked);
             return reservations is null ? NotFound() : Ok(reservations);
         }
-        catch (KeyNotFoundException)
+        catch (StoreIsEmptyException)
         {
 
-            return NotFound();
+            return NoContent();
         }
-        catch (NullReferenceException)
-        {
-
-            return BadRequest();
-        }
-        catch (InvalidOperationException)
+        catch (Exception)
         {
 
             return BadRequest();
@@ -103,6 +101,7 @@ public class ReservationController : ControllerBase, IReservationController
     [HttpPut($"{nameof(Insert)}")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Insert(Tuple<int, Reservation> tuple)
     {
         try
@@ -112,17 +111,42 @@ public class ReservationController : ControllerBase, IReservationController
 
             return CreatedAtAction(nameof(Insert), new { cardNumber = tuple.Item1, reservation = tuple.Item2 });
         }
+        catch (BookCodeNotFoundException)
+        {
+
+            return NotFound();
+        }
+        catch (BookNotReservableException)
+        {
+
+            return BadRequest();
+        }
+        catch (CardBlockedException)
+        {
+
+            return BadRequest();
+        }
+        catch (BookAlreadyReservedException)
+        {
+
+            return Conflict();
+        }
+        catch (CardNotInUserStoreException)
+        {
+
+            return NotFound();
+        }
+        catch (NumberOfReservationsExceededException)
+        {
+
+            return BadRequest();
+        }
         catch (InvalidOperationException)
         {
 
             return BadRequest();
         }
-        catch (KeyNotFoundException)
-        {
-
-            return BadRequest();
-        }
-        catch (NullReferenceException)
+        catch (Exception)
         {
 
             return BadRequest();
@@ -138,7 +162,7 @@ public class ReservationController : ControllerBase, IReservationController
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> UpdatePeriod(Tuple<int, Reservation, DateTime> tuple)
+    public async Task<IActionResult> UpdatePeriod(Tuple<int, string, DateTime> tuple)
     {
         try
         {
@@ -146,7 +170,12 @@ public class ReservationController : ControllerBase, IReservationController
             await ReservationStore.UpdatePeriodAsync(tuple.Item1, tuple.Item2, tuple.Item3);
             return CreatedAtAction(nameof(UpdatePeriod), new { cardNumber = tuple.Item1 }, tuple);
         }
-        catch (KeyNotFoundException)
+        catch (StoreIsEmptyException)
+        {
+
+            return NoContent();
+        }
+        catch (CardNotInUserStoreException)
         {
 
             return NotFound();
@@ -156,7 +185,12 @@ public class ReservationController : ControllerBase, IReservationController
 
             return BadRequest();
         }
-        catch (NullReferenceException)
+        catch (ReservationNotFoundException)
+        {
+
+            return NotFound();
+        }
+        catch (Exception)
         {
 
             return BadRequest();

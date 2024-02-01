@@ -81,9 +81,11 @@ public class PersonStore : IPersonStore
     {
         return Task.Run(() =>
         {
-            if (Store is null) throw new NullReferenceException("Unable to update address because store is null");
-            if (Store.Count.Equals(0)) throw new InvalidOperationException("Unable to update adddress because store is empty");
-            if (!Store.TryGetValue(idCode, out var user)) throw new KeyNotFoundException($"Unable to update address because IdCode {idCode} not found in store.");
+            if (Store.Count.Equals(0)) 
+                throw new StoreIsEmptyException(nameof(UpdateAddressAsync));
+            
+            if (!Store.TryGetValue(idCode, out var user)) 
+                throw new IdCodeNotFoundException(nameof(UpdateAddressAsync), idCode);
 
             user.Address = address;
         });

@@ -96,7 +96,7 @@ public class BookStore : IBookStore
             throw new StoreIsEmptyException(nameof(GetByCodeAsync));
 
         if (!Store.TryGetValue(code, out var value) || value is null)
-            throw new Exceptions.BookStore.BookCodeNotFoundException(code, nameof(GetByCodeAsync));
+            throw new BookCodeNotFoundException(code, nameof(GetByCodeAsync));
 
         return await Task.FromResult(value);
     }
@@ -160,7 +160,7 @@ public class BookStore : IBookStore
                 throw new PositionAlreadyOccupiedException((int)book.Position, nameof(InsertAsync));
 
             if (!Store.TryAdd(book.Code, book))
-                throw new Exception($"Impossible to add book with code {book.Code}.");
+                throw new InvalidOperationException($"Impossible to add book with code {book.Code}.");
         });
     }
     /// <summary>

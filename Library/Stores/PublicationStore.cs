@@ -8,7 +8,7 @@ namespace Library.Core.Stores;
 
 public class PublicationStore : IPublicationStore
 {
-    private Dictionary<string, Publication> Store;
+    private Dictionary<string, Publication> Store { get; set; }
     public PublicationStore()
     {
         Store ??= new Dictionary<string, Publication>();
@@ -22,7 +22,7 @@ public class PublicationStore : IPublicationStore
                 throw new StoreIsEmptyException(nameof(DeleteAsync));
 
             if (!Store.Remove(isbn))
-                throw new IsbnNotFoundException(isbn);
+                throw new IsbnNotFoundException(nameof(DeleteAsync), isbn);
         });
     }
 
@@ -32,7 +32,7 @@ public class PublicationStore : IPublicationStore
             throw new StoreIsEmptyException(nameof(GetAsync));
 
         if (!Store.ContainsKey(isbn))
-            throw new IsbnNotFoundException(isbn);
+            throw new IsbnNotFoundException(nameof(GetAsync), isbn);
 
         return await Task.FromResult(Store[isbn].Clone());
     }
@@ -79,7 +79,7 @@ public class PublicationStore : IPublicationStore
         }
 
         if (!result.Any())
-            throw new EmptyResultException(nameof(GetByGenreAsync));
+            throw new EmptyResultException(nameof(GetByAuthorAsync));
 
         return await Task.FromResult(result);
     }
@@ -173,7 +173,13 @@ public class PublicationStore : IPublicationStore
 
     public async Task UpdateTitleAsync(string isbn, string? title)
     {
-        throw new NotImplementedException();
+        if (!Store.ContainsKey(isbn))
+            throw new IsbnNotFoundException(nameof(UpdateTitleAsync), isbn);
+
+        await Task.Run(() =>
+        {
+            Store[isbn].Title = title;
+        });
     }
 
     public async Task<bool> Contains(string isbn)

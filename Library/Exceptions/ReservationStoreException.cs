@@ -52,12 +52,18 @@ public class ReservationDatesInvalidException : ReservationStoreException
 
 public class ReservationNotFoundException : ReservationStoreException 
 {
-    public ReservationNotFoundException(string operation, Reservation reservation)
-        : base(string.Format("Impossible to perform operation: {0} because reservation: {1} is not in reservation store.", operation, reservation.ToString())) { }
+    public ReservationNotFoundException(string operation, string bookCode)
+        : base(string.Format("Impossible to perform operation: {0} because book code: {1} is not in reservation store.", operation, bookCode.ToString())) { }
 }
 
 public class UserHasReservationInDelayException : ReservationStoreException
 {
     public UserHasReservationInDelayException(string operation, int cardNumber) 
         : base(string.Format("Impossible to perform operation {0} because there is a reservation in delay for card: {1} in reservation store", operation, cardNumber)) { }
+}
+
+public class CardNotInUserStoreException : ReservationStoreException
+{
+    public CardNotInUserStoreException(string operation, int cardNumber) 
+        : base(string.Format("Impossible to perform operaiton {0} because card with number: {1} is not in user store.", operation, cardNumber)) { }
 }

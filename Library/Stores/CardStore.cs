@@ -19,7 +19,7 @@ public class CardStore : ICardStore
 
     public async Task<int> Count()
     {
-        return await Task.FromResult(Store.Count());
+        return await Task.FromResult(Store.Count);
     }
 
     public async Task<bool> Contains(int cardNumber)

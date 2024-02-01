@@ -12,7 +12,8 @@ public class PersonStoreTest
 {
     private const string IdCode1 = "idCode1";
     private const string IdCode2 = "idCode2";
-    private Person Person1 = new Person(IdCode1);
+    
+    private readonly Person Person1 = new(IdCode1);
     private IPersonStore PersonStore { get; set; }
 
     public PersonStoreTest() => PersonStore = new PersonStore();

@@ -6,7 +6,6 @@ using Library.Interfaces;
 using Library.Interfaces.Stores;
 using Moq;
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using Xunit;
 using StoreIsEmptyException = Library.Core.Exceptions.ReservationStore.StoreIsEmptyException;
@@ -28,18 +27,21 @@ public class ReservationStoreTest
     private const string Isbn2 = "isbn2";
     private const string Isbn3 = "isbn3";
     private const string PersonId1 = "pesonId1";
+    private const string PersonId2 = "pesonId2";
 
-    private Publication Publication1 = new Publication(Isbn1);
-    private Publication Publication2 = new Publication(Isbn2);
-    private Book Book1 = new Book(Book1Code, Isbn1, Book1Position);
-    private Book Book2 = new Book(Book2Code, Isbn2, Book2Position);
-    private Book Book3 = new Book(Book3Code, Isbn3, Book3Position);
-    private Card Card1 = new Card(Card1Number);
-    private Card Card2 = new Card(Card2Number);
-    private Reservation Reservation1 = new Reservation(Book1Code, new Mock<Period>().Object);
-    private Reservation Reservation2 = new Reservation(Book2Code, new Mock<Period>().Object);
-    private Reservation ReservationDelayed1 = new Reservation(Book3Code, new Period(DateTime.Now.Date.AddDays(-100)), Status.Picked);
-    private Person Person1 = new Person(PersonId1); 
+    private readonly Publication Publication1 = new(Isbn1);
+    private readonly Publication Publication2 = new(Isbn2);
+    private readonly Publication Publication3 = new(Isbn3);
+    private readonly Book Book1 = new(Book1Code, Isbn1, Book1Position);
+    private readonly Book Book2 = new(Book2Code, Isbn2, Book2Position);
+    private readonly Book Book3 = new(Book3Code, Isbn3, Book3Position);
+    private readonly Card Card1 = new(Card1Number);
+    private readonly Card Card2 = new(Card2Number);
+    private readonly Reservation Reservation1 = new(Book1Code, new Mock<Period>().Object);
+    private readonly Reservation Reservation2 = new(Book2Code, new Mock<Period>().Object);
+    private readonly Reservation ReservationDelayed1 = new(Book3Code, new Period(DateTime.Now.Date.AddDays(-100)), Status.Picked);
+    private readonly Person Person1 = new(PersonId1);
+    private readonly Person Person2 = new(PersonId2);
     #endregion
 
     public IPublicationStore PublicationStore { get; set; }
@@ -57,6 +59,46 @@ public class ReservationStoreTest
         PersonStore = new PersonStore();
         UserStore = new UserStore(CardStore, PersonStore);
         ReservationStore = new ReservationStore(BookStore, CardStore, UserStore);
+
+        PersonStore.InsertAsync(Person1);
+        PersonStore.InsertAsync(Person2);
+    }
+
+    [Fact]
+    public async Task Contains_BookCode_IfReservationInStore_ReturnsTrue_Async()
+    {
+        await PublicationStore.InsertAsync(Publication1);
+        await BookStore.InsertAsync(Book1);
+        await CardStore.InsertAsync(Card1);
+        await UserStore.InsertAsync(Card1.Number, Person1.Id);
+        await ReservationStore.InsertAsync(Card1.Number, Reservation1);
+
+        Assert.True(await ReservationStore.Contains(Book1.Code));
+        Assert.False(await ReservationStore.Contains(Book2.Code));
+    }
+
+    [Fact]
+    public async Task GetAllAsync_IfStoreIsEmpty_ThrowsException_Async()
+    {
+        await PublicationStore.InsertAsync(Publication1);
+        await BookStore.InsertAsync(Book1);
+        await CardStore.InsertAsync(Card1);
+        await Assert.ThrowsAsync<Exceptions.ReservationStore.StoreIsEmptyException>(async ()
+            => await ReservationStore.GetAllAsync());
+    }
+
+    [Fact]
+    public async Task GetAllAsync_ReturnsStore_Async()
+    {
+        await PublicationStore.InsertAsync(Publication1);
+        await BookStore.InsertAsync(Book1);
+        await CardStore.InsertAsync(Card1);
+        await UserStore.InsertAsync(Card1.Number, Person1.Id);
+        await ReservationStore.InsertAsync(Card1.Number, Reservation1);
+
+        Assert.NotEmpty(await ReservationStore.GetAllAsync());
+        var result = await ReservationStore.GetAllAsync();
+        Assert.Contains(Card1.Number, result.Keys);
     }
 
     [Theory]
@@ -68,81 +110,46 @@ public class ReservationStoreTest
             => await ReservationStore.GetDelayedAsync(isBlocked));
     }
 
-    //[Fact]
-    //public async Task GetDelayedAsync_GetsDelayedReservations_Async()
-    //{
-    //    Pub
-
-    //    var delayedReservations = await ReservationStore.GetDelayedAsync(null);
-
-    //    Assert.Equal(numOfDelayedPerson, delayedReservations.Count);
-    //}
-
-    //[Theory]
-    //[InlineData(10, 1)]
-    //[InlineData(1, 2)]
-    //[InlineData(7, 3)]
-    //[InlineData(2, 4)]
-    //public async Task GetDelayedAsync_GetsDelayedReservations_IfCardBlocked_Async(
-    //int numOfDelayedPerson, int numOfNotDelayedReservations)
-    //{
-    //    // Arrange
-    //    int bookVar = 0;
-    //    for (int i = 0; i < numOfDelayedPerson; i++)
-    //    {
-    //        // Insert card in card store.
-    //        var card = new Card(i, false);
-    //        await CardStore.InsertAsync(card);
-
-    //        // Insert not delayed reservations.
-    //        for (int j = 0; j < numOfNotDelayedReservations; j++)
-    //        {
-    //            // Insert book in book store.
-    //            var notDelayedBook = new Book(bookVar.ToString(), bookVar.ToString());
-    //            await BookStore.InsertAsync(notDelayedBook);
-
-    //            var dateFrom = DateTime.Today.Date;
-    //            await ReservationStore.InsertAsync(card.Number,
-    //                new Reservation(
-    //                    bookVar.ToString(),
-    //                    new Period(dateFrom: dateFrom, dateTo: dateFrom.AddDays(3))));
-    //            bookVar++;
-    //        }
-
-    //        // Insert book in book store.
-    //        var delayedBook = new Book(bookVar.ToString(), bookVar.ToString());
-    //        await BookStore.InsertAsync(delayedBook);
-
-    //        // Insert delayed reservation.
-    //        await ReservationStore.InsertAsync(card.Number,
-    //            new Reservation(
-    //                bookVar.ToString(),
-    //                new Period(dateFrom: new DateTime(2000, 12, 31), dateTo: new DateTime(2000, 12, 31).AddDays(3))));
-    //        bookVar++;
-
-    //        // Block card.
-    //        card = new Card(card.Number, true);
-    //        await CardStore.UpdateIsBlockedAsync(card.Number);
-    //    }
-
-    //    // Act
-    //    var delayedReservations = await ReservationStore.GetDelayedAsync(true);
-
-    //    // Assert
-    //    Assert.Equal(numOfDelayedPerson, delayedReservations.Count);
-    //}
-
     [Fact]
-    public async Task InsertAsync_InsertsReservationInStore_IfCardIsInStore_Async()
+    public async Task GetDelayedAsync_GetsDelayedReservations_Async()
     {
         await PublicationStore.InsertAsync(Publication1);
+        await PublicationStore.InsertAsync(Publication3);
         await BookStore.InsertAsync(Book1);
+        await BookStore.InsertAsync(Book3);
         await CardStore.InsertAsync(Card1);
+        await UserStore.InsertAsync(Card1.Number, Person1.Id);
         await ReservationStore.InsertAsync(Card1.Number, Reservation1);
+        await ReservationStore.InsertAsync(Card1.Number, ReservationDelayed1);
 
-        Assert.NotEmpty(await ReservationStore.GetAllAsync());
-        var result = await ReservationStore.GetAllAsync();
-        Assert.Contains(Reservation1, result[Card1.Number]);
+        var result = await ReservationStore.GetDelayedAsync(null);
+        Assert.Contains(ReservationDelayed1, result);
+        Assert.DoesNotContain(Reservation1, result);
+    }
+
+    [Fact]
+    public async Task GetDelayedAsync_GetsDelayedReservations_IfCardBlocked_Async()
+    {
+        await PublicationStore.InsertAsync(Publication1);
+        await PublicationStore.InsertAsync(Publication2);
+        await PublicationStore.InsertAsync(Publication3);
+        await BookStore.InsertAsync(Book1);
+        await BookStore.InsertAsync(Book2);
+        await BookStore.InsertAsync(Book3);
+        await CardStore.InsertAsync(Card1);
+        await CardStore.InsertAsync(Card2);
+        await UserStore.InsertAsync(Card1.Number, Person1.Id);
+        await UserStore.InsertAsync(Card2.Number, Person2.Id);
+        await ReservationStore.InsertAsync(Card1.Number, Reservation1);
+        await ReservationStore.InsertAsync(Card1.Number, ReservationDelayed1);
+        await ReservationStore.InsertAsync(Card2.Number, Reservation2);
+
+        await CardStore.UpdateIsBlockedAsync(Card1.Number);
+
+        var result = await ReservationStore.GetDelayedAsync(isBlocked: true);
+        Assert.Contains(ReservationDelayed1, result);
+        Assert.DoesNotContain(Reservation1, result);
+        Assert.DoesNotContain(Reservation2, result);
     }
 
     [Fact]
@@ -159,7 +166,7 @@ public class ReservationStoreTest
     {
         await PublicationStore.InsertAsync(Publication1);
         await CardStore.InsertAsync(Card1);
-        
+
         Book1.Position = null;
         await BookStore.InsertAsync(Book1);
 
@@ -168,69 +175,44 @@ public class ReservationStoreTest
     }
 
     [Fact]
-    public async Task InsertAsync_IfBookIsAlreadyInReservations_ThrowsException_Async()
+    public async Task InsertAsync_IfCardIsBlocked_ThrowsException_Async()
+    {
+        await PublicationStore.InsertAsync(Publication1);
+        await BookStore.InsertAsync(Book1);
+        await CardStore.InsertAsync(Card1);
+        await CardStore.UpdateIsBlockedAsync(Card1.Number, isBlocked: true);
+
+        await Assert.ThrowsAsync<CardBlockedException>(async ()
+            => await ReservationStore.InsertAsync(Card1.Number, Reservation1));
+    }
+
+
+    [Fact]
+    public async Task InsertAsync_IfCardUserIsBlocked_ThrowsException_Async()
+    {
+        await PublicationStore.InsertAsync(Publication1);
+        await BookStore.InsertAsync(Book1);
+
+        Card1.IsBlocked = true; // TODO Fix possible assignments w/o passing to a method.
+        await CardStore.InsertAsync(Card1);
+
+        await Assert.ThrowsAsync<CardBlockedException>(async ()
+            => await ReservationStore.InsertAsync(Card1.Number, Reservation1));
+    }
+
+    [Fact]
+    public async Task InsertAsync_IfBookIsAlreadyReserved_ThrowsException_Async()
     {
         await PublicationStore.InsertAsync(Publication1);
         await BookStore.InsertAsync(Book1);
         await CardStore.InsertAsync(Card1);
         await CardStore.InsertAsync(Card2);
-
+        await UserStore.InsertAsync(Card1.Number, Person1.Id);
+        await UserStore.InsertAsync(Card2.Number, Person2.Id);
         await ReservationStore.InsertAsync(Card1.Number, Reservation1);
 
         await Assert.ThrowsAsync<BookAlreadyReservedException>(async ()
             => await ReservationStore.InsertAsync(Card2.Number, Reservation1));
-    }
-
-    [Fact]
-    public async Task InsertAsync_InsertsReservationInStore_Async()
-    {
-        // Arrange
-        await PublicationStore.InsertAsync(Publication1);
-        await BookStore.InsertAsync(Book1);
-
-        await CardStore.InsertAsync(Card1);
-
-        // Act
-        await ReservationStore.InsertAsync(Card1.Number, Reservation1);
-
-        // Assert
-        var result = await ReservationStore.GetAllAsync();
-        Assert.NotEmpty(result);
-        Assert.Contains(Reservation1, result[Card1.Number]);
-        Assert.Single(result);
-    }
-
-    [Theory]
-    [InlineData(1)]
-    [InlineData(2)]
-    [InlineData(3)]
-    [InlineData(4)]
-    [InlineData(5)]
-    public async Task InsertAsync_InsertsMultipleReservations_Async(int numOfReservations)
-    {
-        // Arrange
-
-        await CardStore.InsertAsync(Card1);
-
-        for (int i = 0; i < numOfReservations; i++)
-        {
-            var value = i.ToString();
-
-            var publication = new Publication(value);
-            var book = new Book(value, value, int.Parse(value));
-            var reservation = new Reservation(value, new Mock<Period>().Object);
-
-            await PublicationStore.InsertAsync(publication);
-            await BookStore.InsertAsync(book);
-            
-            // Act
-            await ReservationStore.InsertAsync(Card1.Number, reservation);
-        }
-
-        // Assert
-        var result = await ReservationStore.GetAllAsync();
-        Assert.NotEmpty(result);
-        Assert.Equal(numOfReservations, result[Card1.Number].Count);
     }
 
     [Fact]
@@ -273,6 +255,7 @@ public class ReservationStoreTest
         var reservation6 = new Reservation(book6.Code, new Mock<Period>().Object);
 
         await CardStore.InsertAsync(Card1);
+        await UserStore.InsertAsync(Card1.Number, Person1.Id);
 
         // Act
         await ReservationStore.InsertAsync(Card1.Number, reservation1);
@@ -298,16 +281,72 @@ public class ReservationStoreTest
     }
 
     [Fact]
-    public async Task InsertAsync_IfCardUserIsBlocked_ThrowsException_Async()
+    public async Task InsertAsync_InsertsReservationInStore_IfCardIsInStore_Async()
     {
         await PublicationStore.InsertAsync(Publication1);
         await BookStore.InsertAsync(Book1);
-
-        Card1.IsBlocked = true;
         await CardStore.InsertAsync(Card1);
+        await UserStore.InsertAsync(Card1.Number, Person1.Id);
+        await ReservationStore.InsertAsync(Card1.Number, Reservation1);
 
-        await Assert.ThrowsAsync<CardBlockedException>(async ()
-            => await ReservationStore.InsertAsync(Card1.Number, Reservation1));
+        Assert.NotEmpty(await ReservationStore.GetAllAsync());
+        var result = await ReservationStore.GetAllAsync();
+        Assert.Contains(Reservation1, result[Card1.Number]);
+    }
+
+
+    [Fact]
+    public async Task InsertAsync_InsertsReservationInStore_Async()
+    {
+        // Arrange
+        await PublicationStore.InsertAsync(Publication1);
+        await BookStore.InsertAsync(Book1);
+
+        await CardStore.InsertAsync(Card1);
+        await UserStore.InsertAsync(Card1.Number, Person1.Id);
+
+        // Act
+        await ReservationStore.InsertAsync(Card1.Number, Reservation1);
+
+        // Assert
+        var result = await ReservationStore.GetAllAsync();
+        Assert.NotEmpty(result);
+        Assert.Contains(Reservation1, result[Card1.Number]);
+        Assert.Single(result);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    public async Task InsertAsync_InsertsMultipleReservations_Async(int numOfReservations)
+    {
+        // Arrange
+
+        await CardStore.InsertAsync(Card1);
+        await UserStore.InsertAsync(Card1.Number, Person1.Id);
+
+        for (int i = 0; i < numOfReservations; i++)
+        {
+            var value = i.ToString();
+
+            var publication = new Publication(value);
+            var book = new Book(value, value, int.Parse(value));
+            var reservation = new Reservation(value, new Mock<Period>().Object);
+
+            await PublicationStore.InsertAsync(publication);
+            await BookStore.InsertAsync(book);
+
+            // Act
+            await ReservationStore.InsertAsync(Card1.Number, reservation);
+        }
+
+        // Assert
+        var result = await ReservationStore.GetAllAsync();
+        Assert.NotEmpty(result);
+        Assert.Equal(numOfReservations, result[Card1.Number].Count);
     }
 
     //[Fact]
@@ -360,9 +399,8 @@ public class ReservationStoreTest
     [Fact]
     public async Task UpdateDateToAsync_IfStoreIsEmpty_ThrowsException_Async()
     {
-        // Arrange & Act & Assert
         await Assert.ThrowsAsync<StoreIsEmptyException>(async ()
-            => await ReservationStore.UpdatePeriodAsync(1, new Mock<Reservation>().Object, new DateTime()));
+            => await ReservationStore.UpdatePeriodAsync(1, Reservation1.BookCode, new DateTime()));
     }
 
     [Fact]
@@ -372,16 +410,14 @@ public class ReservationStoreTest
         await PublicationStore.InsertAsync(Publication1);
         await BookStore.InsertAsync(Book1);
         await CardStore.InsertAsync(Card1);
-        await PersonStore.InsertAsync(Person1);
-
-        await ReservationStore.InsertAsync(Card1.Number, Reservation1);
         await UserStore.InsertAsync(Card1.Number, Person1.Id);
+        await ReservationStore.InsertAsync(Card1.Number, Reservation1);
 
         // Act & Assert
         var cardNotInStore = new Card(1);
 
-        await Assert.ThrowsAsync<KeyNotFoundException>(async ()
-            => await ReservationStore.UpdatePeriodAsync(cardNotInStore.Number, new Mock<Reservation>().Object, new DateTime()));
+        await Assert.ThrowsAsync<CardNotInUserStoreException>(async ()
+            => await ReservationStore.UpdatePeriodAsync(cardNotInStore.Number, Reservation1.BookCode, new DateTime()));
     }
 
     [Fact]
@@ -390,14 +426,13 @@ public class ReservationStoreTest
         await PublicationStore.InsertAsync(Publication1);
         await BookStore.InsertAsync(Book1);
         await CardStore.InsertAsync(Card1);
-        await PersonStore.InsertAsync(Person1);
         await UserStore.InsertAsync(Card1.Number, Person1.Id);
 
         await ReservationStore.InsertAsync(Card1.Number, Reservation1);
-        await ReservationStore.UpdatePeriodAsync(Card1.Number, Reservation1, dateTo: DateTime.Today.AddDays(-1));
+        await ReservationStore.UpdatePeriodAsync(Card1.Number, Reservation1.BookCode, dateTo: DateTime.Today.AddDays(-1));
 
         await Assert.ThrowsAsync<InvalidOperationException>(async ()
-            => await ReservationStore.UpdatePeriodAsync(Card1.Number, Reservation1, new DateTime()));
+            => await ReservationStore.UpdatePeriodAsync(Card1.Number, Reservation1.BookCode, new DateTime()));
     }
 
     //[Fact]
@@ -428,7 +463,7 @@ public class ReservationStoreTest
     {
         // Arrange & Act & Assert
         await Assert.ThrowsAsync<StoreIsEmptyException>(async ()
-            => await ReservationStore.UpdateStatusAsync(new Mock<Card>().Object.Number, new Mock<Reservation>().Object));
+            => await ReservationStore.UpdateStatusAsync(new Mock<Card>().Object.Number, Reservation1.BookCode));
     }
 
     [Fact]
@@ -438,11 +473,12 @@ public class ReservationStoreTest
         await PublicationStore.InsertAsync(Publication1);
         await BookStore.InsertAsync(Book1);
         await CardStore.InsertAsync(Card1);
+        await UserStore.InsertAsync(Card1.Number, Person1.Id);
         await ReservationStore.InsertAsync(Card1.Number, Reservation1);
 
         // Act & Assert
         await Assert.ThrowsAsync<CardNotFoundException>(async ()
-            => await ReservationStore.UpdateStatusAsync(Card2.Number, Reservation1));
+            => await ReservationStore.UpdateStatusAsync(Card2.Number, Reservation1.BookCode));
     }
 
     [Fact]
@@ -456,11 +492,12 @@ public class ReservationStoreTest
         await BookStore.InsertAsync(Book1);
         await BookStore.InsertAsync(Book2);
         await CardStore.InsertAsync(Card1);
+        await UserStore.InsertAsync(Card1.Number, Person1.Id);
         await ReservationStore.InsertAsync(Card1.Number, Reservation1);
 
         // Act & Assert
         await Assert.ThrowsAsync<ReservationNotFoundException>(async ()
-            => await ReservationStore.UpdateStatusAsync(Card1.Number, reservationNotInReservationList));
+            => await ReservationStore.UpdateStatusAsync(Card1.Number, reservationNotInReservationList.BookCode));
     }
 
     [Fact]
@@ -470,10 +507,11 @@ public class ReservationStoreTest
         await PublicationStore.InsertAsync(Publication1);
         await BookStore.InsertAsync(Book1);
         await CardStore.InsertAsync(Card1);
+        await UserStore.InsertAsync(Card1.Number, Person1.Id);
         await ReservationStore.InsertAsync(Card1.Number, Reservation1);
 
         // Act
-        await ReservationStore.UpdateStatusAsync(Card1.Number, Reservation1);
+        await ReservationStore.UpdateStatusAsync(Card1.Number, Reservation1.BookCode);
 
         // Assert
         var result = await ReservationStore.GetAllAsync();
@@ -489,6 +527,7 @@ public class ReservationStoreTest
         await BookStore.InsertAsync(Book1);
         await BookStore.InsertAsync(Book2);
         await CardStore.InsertAsync(Card1);
+        await UserStore.InsertAsync(Card1.Number, Person1.Id);
 
         var reservationNotDelayed = new Reservation(Book1.Code, new Period(dateFrom: DateTime.Today.Date));
         var reservationDelayed = new Reservation(Book2.Code, new Period(dateFrom: DateTime.Today.Date.AddDays(-10)));
@@ -497,6 +536,6 @@ public class ReservationStoreTest
         await ReservationStore.InsertAsync(Card1.Number, reservationDelayed);
 
         await Assert.ThrowsAsync<UserHasReservationInDelayException>(async ()
-            => await ReservationStore.UpdateStatusAsync(Card1.Number, reservationNotDelayed, Status.Picked));
+            => await ReservationStore.UpdateStatusAsync(Card1.Number, reservationNotDelayed.BookCode, Status.Picked));
     }
 }

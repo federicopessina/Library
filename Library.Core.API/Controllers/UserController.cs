@@ -1,8 +1,12 @@
-﻿using Library.Entities;
+﻿using Library.Core.Exceptions.CardStore;
+using Library.Core.Exceptions.PersonStore;
+using Library.Core.Exceptions.UserStore;
+using Library.Entities.Controllers;
 using Library.Interfaces;
 using Library.Interfaces.Controllers;
 using Library.Interfaces.Stores;
 using Microsoft.AspNetCore.Mvc;
+using StoreIsEmptyException = Library.Core.Exceptions.UserStore.StoreIsEmptyException;
 
 namespace Library.Core.API.Controllers;
 /// <summary>
@@ -13,6 +17,7 @@ namespace Library.Core.API.Controllers;
 public class UserController : ControllerBase, IUserController
 {
     private const string UserTag = "User";
+
     private readonly IUserStore UserStore;
     private readonly ICardStore CardStore;
     private readonly IPersonStore PersonStore;
@@ -35,6 +40,7 @@ public class UserController : ControllerBase, IUserController
     /// <returns></returns>
     [Tags(UserTag)]
     [HttpDelete($"{nameof(Delete)}/{{cardNumber}}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -43,22 +49,22 @@ public class UserController : ControllerBase, IUserController
         try
         {
             await UserStore.DeleteAsync(cardNumber);
+            return Ok();
+        }
+        catch (StoreIsEmptyException)
+        {
+
             return NoContent();
         }
-        catch (InvalidOperationException)
+        catch (CardNotFoundException)
         {
 
             return NotFound();
         }
-        catch (NullReferenceException)
+        catch (Exception)
         {
 
             return BadRequest();
-        }
-        catch (KeyNotFoundException)
-        {
-
-            return NotFound();
         }
     }
     /// <summary>
@@ -71,19 +77,36 @@ public class UserController : ControllerBase, IUserController
     [HttpPut($"{nameof(Insert)}")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Insert(int cardNumber, string personIdCode)
     {
         try
         {
             await UserStore.InsertAsync(cardNumber, personIdCode);
-            return CreatedAtAction(nameof(Insert), new { cardNumber = cardNumber, personIdCode = personIdCode });
+            return CreatedAtAction(nameof(Insert), new { cardNumber, personIdCode });
         }
-        catch (InvalidOperationException)
+        catch (CardNotFoundException)
         {
 
-            return BadRequest();
+            return NotFound();
         }
-        catch (KeyNotFoundException)
+        catch (PersonNotFoundException)
+        {
+
+            return NotFound();
+        }
+        catch (DuplicatedCardException)
+        {
+
+            return Conflict();
+        }
+        catch (DuplicatedPersonException)
+        {
+
+            return Conflict();
+        }
+        catch (Exception)
         {
 
             return BadRequest();
@@ -98,7 +121,8 @@ public class UserController : ControllerBase, IUserController
     [HttpPut($"{nameof(Register)}")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> Register(User user)
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Register(UserRegistration user)
     {
         try
         {
@@ -106,6 +130,41 @@ public class UserController : ControllerBase, IUserController
             await PersonStore.InsertAsync(user.Person);
             await UserStore.InsertAsync(user.Card.Number, user.Person.Id);
             return CreatedAtAction(nameof(Register), new { cardNumber = user.Card.Number, personIdCode = user.Person.Id });
+        }
+        catch (DuplicatedCardNumberException)
+        {
+
+            return Conflict();
+        }
+        catch (DuplicatedIdException)
+        {
+
+            return Conflict();
+        }
+        catch (InvalidOperationException)
+        {
+
+            return BadRequest();
+        }
+        catch (CardNotFoundException)
+        {
+
+            return NotFound();
+        }
+        catch (PersonNotFoundException)
+        {
+
+            return NotFound();
+        }
+        catch (DuplicatedCardException)
+        {
+
+            return Conflict();
+        }
+        catch (DuplicatedPersonException)
+        {
+
+            return Conflict();
         }
         catch (Exception)
         {

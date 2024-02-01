@@ -16,7 +16,7 @@ public class StoreIsEmptyException : UserStoreException
 public class CardNotFoundException : UserStoreException
 {
     public CardNotFoundException(string operation, int cardNumber) 
-        : base(string.Format("Impossible to perform operaion: {0} because card number is not in store.", operation, cardNumber)) { }
+        : base(string.Format("Impossible to perform operaion: {0} because card number: {1} is not in store.", operation, cardNumber)) { }
 }
 
 public class DuplicatedCardException : UserStoreException
@@ -34,5 +34,5 @@ public class PersonNotFoundException : UserStoreException
 public class DuplicatedPersonException : UserStoreException 
 {
     public DuplicatedPersonException(string operation, string personId) 
-        : base("Impossible to perform operation: {0} because person with id: is already in user store.") { }
+        : base(string.Format("Impossible to perform operation: {0} because person with id: {1} is already in user store.", operation, personId)) { }
 }

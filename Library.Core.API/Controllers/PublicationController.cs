@@ -136,6 +136,11 @@ namespace Library.Core.API.Controllers
 
                 return NotFound();
             }
+            catch (Exception)
+            {
+
+                return BadRequest();
+            }
         }
         /// <summary>
         /// Insert.
@@ -145,7 +150,7 @@ namespace Library.Core.API.Controllers
         [Tags(PublicationTag)]
         [HttpPut(nameof(Insert))]
         [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
         public async Task<IActionResult> Insert([FromBody] Publication publication)
         {
@@ -158,6 +163,11 @@ namespace Library.Core.API.Controllers
             {
 
                 return Conflict(publication);
+            }
+            catch (Exception)
+            {
+
+                return BadRequest();
             }
         }
     }

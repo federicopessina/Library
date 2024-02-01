@@ -13,8 +13,9 @@ public class BookStoreTest
 {
     private const string Code1 = "code1";
     private const string Code2 = "code2";
-    private Mock<IPublicationStore> PublicationStore;
-    private IBookStore BookStore;
+
+    private readonly Mock<IPublicationStore> PublicationStore;
+    private readonly IBookStore BookStore;
 
     public BookStoreTest()
     {
@@ -43,8 +44,10 @@ public class BookStoreTest
     [Fact]
     public async Task DeleteByCodeAsync_IfStoreDoesNotContainCode_ThrowsException_Async()
     {
-        var book = new Book();
-        book.Code = Code2;
+        Book? book = new()
+        {
+            Code = Code2
+        };
         await BookStore.InsertAsync(book);
 
         await Assert.ThrowsAsync<Exceptions.BookStore.BookCodeNotFoundException>(async ()
@@ -68,8 +71,10 @@ public class BookStoreTest
     [Fact]
     public async Task GetByCodeAsync_IfStoreDoesNotContainKey_ThrowsException_Async()
     {
-        var book = new Book();
-        book.Code = Code2;
+        var book = new Book
+        {
+            Code = Code2
+        };
         await BookStore.InsertAsync(book);
 
         await Assert.ThrowsAsync<Exceptions.BookStore.BookCodeNotFoundException>(async ()
@@ -84,7 +89,7 @@ public class BookStoreTest
         book.Code = codeToSearch;
         await BookStore.InsertAsync(book);
 
-        Assert.True(await BookStore.GetByCodeAsync(codeToSearch) is Book);
+        Assert.True(await BookStore.GetByCodeAsync(codeToSearch) is not null);
         var result = await BookStore.GetByCodeAsync(codeToSearch);
         Assert.Equal(codeToSearch, result.Code);
     }
@@ -92,8 +97,10 @@ public class BookStoreTest
     [Fact]
     public async Task InsertAsync_InsertsElementInStore_Async()
     {
-        var book = new Book();
-        book.Code = Code1;
+        var book = new Book
+        {
+            Code = Code1
+        };
 
         await BookStore.InsertAsync(book);
 

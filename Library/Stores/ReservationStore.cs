@@ -13,7 +13,7 @@ public class ReservationStore : IReservationStore
     public readonly ICardStore CardStore;
     public readonly IUserStore UserStore;
     /// <summary>
-    /// Key is <see cref="Card.Number"/>, value is the reservation.
+    /// Key is <see cref="Card.Number"/>, value is <see cref="Reservation"/>.
     /// </summary>
     private Dictionary<int, List<Reservation>> Store { get; set; }
 
@@ -34,6 +34,17 @@ public class ReservationStore : IReservationStore
         return await Task.FromResult(false);
     }
 
+    public async Task<bool> Contains(string bookCode)
+    {
+        foreach (var item in Store)
+        {
+            if (item.Value.Any(reservation => reservation.BookCode.Equals(bookCode, StringComparison.InvariantCultureIgnoreCase)))
+                return await Task.FromResult(true);
+        }
+
+        return await Task.FromResult(false);
+    }
+
     public async Task<Dictionary<int, List<Reservation>>> GetAllAsync()
     {
         if (Store.Count == 0)
@@ -45,7 +56,7 @@ public class ReservationStore : IReservationStore
     public async Task<List<Reservation>> GetDelayedAsync(bool? isBlocked = null)
     {
         if (Store.Count == 0)
-            throw new Exceptions.ReservationStore.StoreIsEmptyException(nameof(GetDelayedAsync));
+            throw new StoreIsEmptyException(nameof(GetDelayedAsync));
 
         var result = new List<Reservation>();
         foreach (var item in Store)
@@ -68,7 +79,7 @@ public class ReservationStore : IReservationStore
 
     public async Task InsertAsync(int cardNumber, Reservation reservation)
     {
-        // Block reseration if book is not in book store.
+        // Block reservation if book is not in book store.
         if (!await BookStore.Contains(reservation.BookCode))
             throw new BookCodeNotFoundException(reservation.BookCode, nameof(InsertAsync));
 
@@ -92,22 +103,28 @@ public class ReservationStore : IReservationStore
             }
         }
 
+        // Block reservation if person is not registered in user store
+        var cardIsRegisteredInUserStore = await UserStore.Contains(cardNumber);
+        if (!cardIsRegisteredInUserStore)
+            throw new CardNotInUserStoreException(nameof(InsertAsync), cardNumber);
 
         await Task.Run(() =>
         {
             const int MaxNumOfReservations = 5;
 
-            // Add user if store does not contain it.
+            // Add user to reservation store if reservation store does not contain it.
             if (!Store.TryGetValue(cardNumber, out var userReservations))
                 Store.Add(cardNumber, new List<Reservation>());
 
             userReservations ??= new List<Reservation>();
 
-            // Block reservation if user has already 5 or more reservations "reserved" or "picked". // TODO Check just if active
+            // TODO Test following.
+
+            // Block reservation if user has already 5 or more reservations "reserved" or "picked".
             var reservedOrPickedReservations = userReservations
                 .Where(r => r.Status == Status.Reserved || r.Status == Status.Picked).ToList();
 
-            if (reservedOrPickedReservations.Count() >= MaxNumOfReservations)
+            if (reservedOrPickedReservations.Count >= MaxNumOfReservations)
                 throw new NumberOfReservationsExceededException(reservation.BookCode);
 
             // Block reservation & user if there is one reservation in late.
@@ -122,7 +139,7 @@ public class ReservationStore : IReservationStore
         });
     }
 
-    public async Task UpdatePeriodAsync(int cardNumber, Reservation reservation, DateTime dateTo)
+    public async Task UpdatePeriodAsync(int cardNumber, string bookCode, DateTime dateTo)
     {
         if (Store.Count == 0)
             throw new StoreIsEmptyException(nameof(UpdatePeriodAsync));
@@ -130,12 +147,10 @@ public class ReservationStore : IReservationStore
         // Block update reservation if user store does not contain card.
         bool userStoreContainsCard = await UserStore.Contains(cardNumber);
         if (!userStoreContainsCard)
-            throw new KeyNotFoundException("Cannot update reservation in store because user is not in user store.");
+            throw new CardNotInUserStoreException(nameof(UpdatePeriodAsync), cardNumber);
 
         await Task.Run(async () =>
         {
-            if (Store.Count == 0) throw new InvalidOperationException("Cannot update reservation in store because store is empty.");
-
             // Block update reservation if user is blocked.
             //if (card.IsBlocked is true) throw new InvalidOperationException("Cannot update reservation in store because user is blocked.");
 
@@ -146,24 +161,27 @@ public class ReservationStore : IReservationStore
                     throw new InvalidOperationException("Cannot extend dateTo because user has one or more reservations in delay.");
             }
 
-            var index = Store[cardNumber].FindIndex(r => r.Equals(reservation));
-            Store[cardNumber][index].Period.DateTo = dateTo;
-        });
+            var index = Store[cardNumber].FindIndex(r => r.BookCode.Equals(bookCode));
 
+            if (index.Equals(-1))
+                throw new ReservationNotFoundException(nameof(UpdateStatusAsync), bookCode);
+
+            await Task.FromResult(Store[cardNumber][index].Period.DateTo = dateTo);
+        });
     }
 
-    public async Task UpdateStatusAsync(int cardNumber, Reservation reservation, Status status = Status.Returned)
+    public async Task UpdateStatusAsync(int cardNumber, string bookCode, Status status = Status.Returned)
     {
         await Task.Run(() =>
         {
-            if (Store.Count == 0) 
+            if (Store.Count == 0)
                 throw new StoreIsEmptyException(nameof(UpdateStatusAsync));
-            
-            if (!Store.ContainsKey(cardNumber)) 
+
+            if (!Store.ContainsKey(cardNumber))
                 throw new CardNotFoundException(nameof(UpdateStatusAsync), cardNumber);
 
-            if (!Store[cardNumber].Contains(reservation))
-                throw new ReservationNotFoundException(nameof(UpdateStatusAsync), reservation);
+            if (!Store[cardNumber].Any(item => item.BookCode.Equals(bookCode, StringComparison.CurrentCultureIgnoreCase)))
+                throw new ReservationNotFoundException(nameof(UpdateStatusAsync), bookCode);
 
             // Block status change to "reserved" or "picked" if there is a delay on other reservation.
             if (status is Status.Reserved || status is Status.Picked)
@@ -175,8 +193,12 @@ public class ReservationStore : IReservationStore
                 }
             }
 
-            var index = Store[cardNumber].FindIndex(r => r.Equals(reservation));
-            Store[cardNumber][index].Status = status;
+            var index = Store[cardNumber].FindIndex(r => r.BookCode.Equals(bookCode));
+            
+            if (index.Equals(-1))
+                throw new ReservationNotFoundException(nameof(UpdateStatusAsync), bookCode);
+
+            Store[cardNumber][index].Status = status; 
         });
     }
 }

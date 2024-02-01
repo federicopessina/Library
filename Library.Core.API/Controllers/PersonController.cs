@@ -1,4 +1,5 @@
-﻿using Library.Entities;
+﻿using Library.Core.Exceptions.PersonStore;
+using Library.Entities;
 using Library.Interfaces;
 using Library.Interfaces.Controllers;
 using Microsoft.AspNetCore.Mvc;
@@ -12,23 +13,26 @@ namespace Library.Core.API.Controllers;
 public class PersonController : ControllerBase, IPersonController
 {
     private const string PersonTag = "Person";
+
     private readonly IPersonStore PersonStore;
     /// <summary>
-    /// Constructor.
+    /// Constructor for <see cref="PersonController"/>.
     /// </summary>
     /// <param name="personStore"></param>
     public PersonController(IPersonStore personStore)
     {
-        PersonStore = personStore;
+        this.PersonStore = personStore;
     }
     /// <summary>
-    /// GetAll.
+    /// GetAll people in person store.
     /// </summary>
     /// <returns></returns>
     [Tags(PersonTag)]
     [HttpGet($"{nameof(GetAll)}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetAll()
     {
         try
@@ -36,25 +40,26 @@ public class PersonController : ControllerBase, IPersonController
             var people = await PersonStore.GetStoreAsync();
             return people is null ? NotFound() : Ok(people);
         }
-        catch (InvalidOperationException)
+        catch (StoreIsEmptyException)
         {
 
-            return BadRequest();
+            return NoContent();
         }
-        catch (NullReferenceException)
+        catch (Exception)
         {
 
             return BadRequest();
         }
     }
     /// <summary>
-    /// Get.
+    /// Get person by id.
     /// </summary>
-    /// <param name="idCode"></param>
+    /// <param name="idCode"><see cref="Person.Id"/></param>
     /// <returns></returns>
     [Tags(PersonTag)]
     [HttpGet($"{nameof(Get)}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Get(string idCode)
@@ -64,26 +69,26 @@ public class PersonController : ControllerBase, IPersonController
             var people = await PersonStore.GetById(idCode);
             return people is null ? NotFound() : Ok(people);
         }
-        catch (KeyNotFoundException)
+        catch (StoreIsEmptyException)
         {
 
-            return NotFound();
+            return NoContent();
         }
-        catch (InvalidOperationException)
+        catch (IdCodeNotFoundException)
         {
 
             return BadRequest();
         }
-        catch (NullReferenceException)
+        catch (Exception)
         {
 
             return BadRequest();
         }
     }
     /// <summary>
-    /// Insert.
+    /// Insert person in person store.
     /// </summary>
-    /// <param name="person"></param>
+    /// <param name="person"><see cref="Person"/></param>
     /// <returns></returns>
     [Tags(PersonTag)]
     [HttpPut($"{nameof(Insert)}")]
@@ -97,12 +102,17 @@ public class PersonController : ControllerBase, IPersonController
 
             return CreatedAtAction(nameof(Insert), new { person.Id }, person);
         }
+        catch (DuplicatedIdException)
+        {
+
+            return BadRequest();
+        }
         catch (InvalidOperationException)
         {
 
             return BadRequest();
         }
-        catch (KeyNotFoundException)
+        catch (Exception)
         {
 
             return BadRequest();

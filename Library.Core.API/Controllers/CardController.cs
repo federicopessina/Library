@@ -1,4 +1,6 @@
-﻿using Library.Core.Stores;
+﻿using Library.Core.Exceptions.CardStore;
+using Library.Core.Exceptions.Results;
+using Library.Core.Stores;
 using Library.Entities;
 using Library.Interfaces.Controllers;
 using Library.Interfaces.Stores;
@@ -6,24 +8,41 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Library.Core.API.Controllers;
 
+/// <summary>
+/// 
+/// </summary>
 [Route("api/[controller]")]
 [ApiController]
 public class CardController : ControllerBase, ICardController
 {
     private const string CardTag = "Card";
+
     private readonly ICardStore CardStore;
     private readonly IReservationStore ReservationStore;
     private readonly IUserStore UserStore;
 
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="cardStore"></param>
+    /// <param name="reservationStore"></param>
+    /// <param name="userStore"></param>
     public CardController(ICardStore cardStore, IReservationStore reservationStore, IUserStore userStore)
     {
         this.CardStore = cardStore;
         this.ReservationStore = reservationStore;
         this.UserStore = userStore;
     }
-
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="cardNumber"></param>
+    /// <returns></returns>
     [Tags(CardTag)]
     [HttpDelete($"{nameof(Delete)}/{{cardNumber}}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(int cardNumber)
     {
         try
@@ -31,18 +50,30 @@ public class CardController : ControllerBase, ICardController
             await CardStore.DeleteAsync(cardNumber, ReservationStore, UserStore);
             return NoContent();
         }
-        catch (InvalidOperationException)
+        catch (StoreIsEmptyException)
+        {
+
+            return NoContent();
+        }
+        catch (CardNumberNotFoundException)
         {
 
             return NotFound();
         }
-        catch (NullReferenceException)
+        catch (ReservationOpenException)
         {
-            return NotFound();
+
+            return BadRequest();
         }
-        catch (KeyNotFoundException)
+        catch (UserRegisteredException)
         {
-            return NotFound();
+
+            return BadRequest();
+        }
+        catch (Exception)
+        {
+
+            return BadRequest();
         }
     }
     /// <summary>
@@ -73,6 +104,7 @@ public class CardController : ControllerBase, ICardController
     [Tags(CardTag)]
     [HttpGet($"{nameof(Get)}/{{cardNumber}}")]
     [ProducesResponseType(typeof(Card), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Get(int cardNumber)
@@ -82,24 +114,31 @@ public class CardController : ControllerBase, ICardController
             var card = await CardStore.GetAsync(cardNumber);
             return card is null ? NotFound() : Ok(card);
         }
-        catch (KeyNotFoundException)
+        catch (StoreIsEmptyException)
+        {
+
+            return NoContent();
+        }
+        catch (CardNumberNotFoundException)
         {
 
             return NotFound();
         }
-        catch (NullReferenceException)
+        catch (Exception)
         {
-            return NotFound();
-        }
-        catch (InvalidOperationException)
-        {
+
             return BadRequest();
         }
     }
-
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="isBlocked"></param>
+    /// <returns></returns>
     [Tags(CardTag)]
     [HttpGet($"{nameof(GetIsBlocked)}/{{isBlocked}}")]
     [ProducesResponseType(typeof(List<Card>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetIsBlocked(bool isBlocked)
@@ -109,50 +148,55 @@ public class CardController : ControllerBase, ICardController
             var card = await CardStore.GetIsBlockedAsync(isBlocked);
             return card is null ? NotFound() : Ok(card);
         }
-        catch (KeyNotFoundException)
+        catch (StoreIsEmptyException)
+        {
+
+            return NoContent();
+        }
+        catch (EmptyResultException)
         {
 
             return NotFound();
         }
-        catch (NullReferenceException)
+        catch (Exception)
         {
-            return NotFound();
-        }
-        catch (InvalidOperationException)
-        {
+
             return BadRequest();
         }
     }
     /// <summary>
-    /// Insert.
+    /// Insert card in card store.
     /// </summary>
-    /// <param name="card"></param>
+    /// <param name="card"><see cref="Card"/> object.</param>
     /// <returns></returns>
     [Tags(CardTag)]
     [HttpPut($"{nameof(Insert)}")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Insert([FromBody] Card card)
     {
         try
         {
             await CardStore.InsertAsync(card);
-
-            return CreatedAtAction(nameof(Insert), new { number = card.Number }, card);
+            return CreatedAtAction(nameof(Insert), new { card }, card);
         }
-        catch (ArgumentException)
+        catch (DuplicatedCardNumberException)
         {
 
             return BadRequest();
         }
-        catch (NullReferenceException)
+        catch (Exception)
         {
 
-            return NotFound();
+            throw;
         }
     }
-
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="cardNumber"></param>
+    /// <param name="isBlocked"></param>
+    /// <returns></returns>
     [Tags(CardTag)]
     [HttpPost($"{nameof(UpdateIsBlocked)}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -162,24 +206,24 @@ public class CardController : ControllerBase, ICardController
     {
         try
         {
-            await CardStore.UpdateIsBlockedAsync(cardNumber, isBlocked ?? true); // TODO Check ?? operator.
+            await CardStore.UpdateIsBlockedAsync(cardNumber);
 
             return CreatedAtAction(nameof(UpdateIsBlocked), new { cardNumber }, isBlocked);
         }
-        catch (KeyNotFoundException)
+        catch (StoreIsEmptyException)
+        {
+
+            return NoContent();
+        }
+        catch (CardNumberNotFoundException)
         {
 
             return NotFound();
         }
-        catch (InvalidOperationException)
+        catch (Exception)
         {
 
             return BadRequest();
-        }
-        catch (NullReferenceException)
-        {
-
-            return NotFound();
         }
     }
 }

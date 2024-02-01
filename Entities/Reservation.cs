@@ -5,10 +5,10 @@ public class Reservation
     public string BookCode { get; set; }
     public Period Period { get; set; }
     public Status Status { get; set; } = Status.Reserved;
-    public Reservation()
-    {
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+    public Reservation() { }
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
 
-    }
     public Reservation(string bookCode, Period period)
     {
         BookCode = bookCode;
