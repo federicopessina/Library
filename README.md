@@ -1,4 +1,4 @@
-# federicopessina-Library
+# Library
 
 The **federicopessina-Library** project is a comprehensive library management system that enables efficient management of books, users, reservations, and publications. It is designed with a modular architecture that separates concerns into distinct layers, including core business logic, APIs, user interfaces, and testing frameworks. This structure ensures scalability, maintainability, and ease of integration with various external systems.
 
